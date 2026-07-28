@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SENTINELA — Auditoria e monitoramento de risco de IA</title>
+<meta name="description" content="MVP demonstrativo: auditoria, score e monitoramento contínuo de risco de IA para empresas da América Latina." />
+<style>
+/* ============================================================
+   SENTINELA — MVP investidor (single-file)
+   Tema escuro comprometido · paleta de dados validada (dataviz)
+   ============================================================ */
+:root {
+  --plane: #0d0d0d;          /* fundo da página */
+  --surface: #1a1a19;        /* superfície de cards/gráficos */
+  --surface-2: #232322;
+  --ink: #ffffff;
+  --ink-2: #c3c2b7;
+  --ink-mute: #898781;
+  --grid: #2c2c2a;
+  --baseline: #383835;
+  --ring: rgba(255,255,255,0.10);
+  --accent: #3987e5;         /* série 1 (dark) */
+  --accent-2: #1c5cab;
+  --good: #0ca30c;
+  --warning: #fab219;
+  --serious: #ec835a;
+  --critical: #d03b3b;
+  --radius: 10px;
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body {
+  font-family: var(--font);
+  background: var(--plane);
+  color: var(--ink-2);
+  line-height: 1.6;
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+}
+.container { width:min(1180px, calc(100% - 3rem)); margin-inline:auto; }
+h1,h2,h3 { color:var(--ink); line-height:1.15; letter-spacing:-0.015em; text-wrap:balance; }
+h1 { font-size:clamp(2.2rem,5vw,3.8rem); font-weight:800; }
+h2 { font-size:clamp(1.6rem,3vw,2.3rem); font-weight:750; margin-bottom:.9rem; }
+h3 { font-size:1.12rem; font-weight:650; }
+a { color:inherit; text-decoration:none; }
+.eyebrow {
+  font-size:.75rem; font-weight:700; letter-spacing:.18em; text-transform:uppercase;
+  color:var(--accent); margin-bottom:.9rem;
+}
+.btn {
+  display:inline-block; padding:.85rem 1.9rem; border-radius:8px; font-weight:650;
+  font-size:.95rem; cursor:pointer; border:1px solid transparent; transition:.25s;
+}
+.btn-primary { background:var(--accent); color:#fff; }
+.btn-primary:hover { background:#5598e7; transform:translateY(-2px); }
+.btn-ghost { border-color:var(--ring); color:var(--ink); }
+.btn-ghost:hover { border-color:var(--accent); color:var(--accent); }
+
+/* ---------- Header ---------- */
+.top {
+  position:sticky; top:0; z-index:50;
+  background:rgba(13,13,13,.9); backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--ring);
+}
+.top-inner { display:flex; align-items:center; justify-content:space-between; padding:.9rem 0; }
+.logo { display:flex; align-items:center; gap:.6rem; color:var(--ink); font-weight:800; letter-spacing:.12em; }
+.logo-mark {
+  width:34px; height:34px; border-radius:8px; display:grid; place-items:center;
+  background:linear-gradient(135deg, var(--accent), var(--accent-2)); color:#fff; font-size:1rem;
+}
+.views { display:flex; gap:.5rem; background:var(--surface); border:1px solid var(--ring); border-radius:9px; padding:.3rem; }
+.views button {
+  font-family:var(--font); font-size:.85rem; font-weight:650; color:var(--ink-2);
+  background:none; border:none; border-radius:7px; padding:.5rem 1.1rem; cursor:pointer; transition:.2s;
+}
+.views button.active { background:var(--accent); color:#fff; }
+.views button:not(.active):hover { color:var(--ink); }
+
+/* ---------- Landing ---------- */
+.hero { padding:6rem 0 4.5rem; position:relative; overflow:hidden; }
+.hero-glow {
+  position:absolute; width:640px; height:640px; right:-160px; top:-220px; pointer-events:none;
+  background:radial-gradient(circle, rgba(57,135,229,.14) 0%, transparent 65%);
+}
+.hero .container { position:relative; }
+.hero p.lead { max-width:620px; margin-top:1.4rem; font-size:1.12rem; }
+.hero-actions { margin-top:2.2rem; display:flex; gap:.9rem; flex-wrap:wrap; }
+.hero-note { margin-top:1rem; font-size:.8rem; color:var(--ink-mute); }
+
+.market-strip { border-block:1px solid var(--ring); background:var(--surface); }
+.market-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:1.5rem; padding:2.2rem 0; }
+.market-grid .m { border-left:2px solid var(--accent); padding-left:1rem; }
+.m b { display:block; color:var(--ink); font-size:1.5rem; font-weight:800; }
+.m span { font-size:.82rem; }
+
+.section { padding:5rem 0; }
+.section.alt { background:var(--surface); border-block:1px solid var(--ring); }
+.section-lead { max-width:640px; margin-bottom:2.6rem; }
+
+.cards3 { display:grid; grid-template-columns:repeat(3,1fr); gap:1.3rem; }
+.card {
+  background:var(--surface); border:1px solid var(--ring); border-radius:var(--radius);
+  padding:1.8rem 1.6rem; transition:.25s;
+}
+.section.alt .card { background:var(--surface-2); }
+.card:hover { transform:translateY(-4px); border-color:rgba(57,135,229,.5); }
+.card .num {
+  width:34px; height:34px; border-radius:8px; display:grid; place-items:center; margin-bottom:1.1rem;
+  background:rgba(57,135,229,.15); color:var(--accent); font-weight:800;
+}
+.card h3 { margin-bottom:.55rem; }
+.card p { font-size:.92rem; }
+.card .price { display:block; margin-top:1rem; color:var(--accent); font-weight:750; font-size:1.05rem; }
+
+.problem-list { display:grid; grid-template-columns:1fr 1fr; gap:1.2rem 2.4rem; margin-top:2rem; }
+.problem-list li { list-style:none; padding-left:1.6rem; position:relative; font-size:.97rem; }
+.problem-list li::before { content:"✕"; position:absolute; left:0; color:var(--critical); font-weight:800; }
+
+.roadmap { display:grid; grid-template-columns:repeat(3,1fr); gap:1.3rem; margin-top:2.4rem; }
+.phase { background:var(--surface-2); border:1px solid var(--ring); border-radius:var(--radius); padding:1.6rem; position:relative; }
+.phase::before {
+  content:attr(data-fase); position:absolute; top:-12px; left:1.2rem;
+  background:var(--accent); color:#fff; font-size:.68rem; font-weight:800; letter-spacing:.1em;
+  padding:.2rem .7rem; border-radius:99px; text-transform:uppercase;
+}
+.phase h3 { margin:.4rem 0 .5rem; }
+.phase p { font-size:.9rem; }
+.phase .goal { margin-top:.9rem; font-size:.8rem; color:var(--ink-mute); border-top:1px solid var(--ring); padding-top:.7rem; }
+
+.cta-band { text-align:center; padding:5rem 0; }
+.cta-band p { max-width:560px; margin:1rem auto 2rem; }
+
+/* ---------- Dashboard ---------- */
+.dash { display:none; padding:2.2rem 0 4rem; }
+.dash.visible { display:block; }
+.landing.hidden { display:none; }
+
+.demo-banner {
+  background:rgba(250,178,25,.1); border:1px solid rgba(250,178,25,.35); color:var(--warning);
+  font-size:.8rem; font-weight:600; text-align:center; padding:.45rem 1rem; border-radius:8px; margin-bottom:1.6rem;
+}
+.dash-head { display:flex; align-items:flex-end; justify-content:space-between; flex-wrap:wrap; gap:1rem; margin-bottom:1.6rem; }
+.dash-head h2 { margin:0; }
+.dash-head .client { font-size:.85rem; color:var(--ink-mute); }
+.filters { display:flex; gap:.5rem; }
+.filters button {
+  font-family:var(--font); font-size:.78rem; font-weight:650; color:var(--ink-2);
+  background:var(--surface); border:1px solid var(--ring); border-radius:7px; padding:.45rem .9rem; cursor:pointer;
+}
+.filters button.active { border-color:var(--accent); color:var(--accent); }
+
+.tiles { display:grid; grid-template-columns:repeat(4,1fr); gap:1.1rem; margin-bottom:1.4rem; }
+.tile { background:var(--surface); border:1px solid var(--ring); border-radius:var(--radius); padding:1.2rem 1.3rem; }
+.tile .t-label { display:block; font-size:.75rem; font-weight:650; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-mute); }
+.tile .t-value { display:block; font-size:2rem; font-weight:800; color:var(--ink); line-height:1.2; margin-top:.3rem; }
+.tile .t-sub { display:flex; }
+.tile .t-sub { font-size:.78rem; margin-top:.2rem; display:flex; align-items:center; gap:.35rem; }
+.pill { display:inline-flex; align-items:center; gap:.3rem; font-size:.72rem; font-weight:700; padding:.14rem .55rem; border-radius:99px; }
+.pill.good { background:rgba(12,163,12,.14); color:var(--good); }
+.pill.warning { background:rgba(250,178,25,.12); color:var(--warning); }
+.pill.serious { background:rgba(236,131,90,.13); color:var(--serious); }
+.pill.critical { background:rgba(208,59,59,.15); color:var(--critical); }
+
+.charts { display:grid; grid-template-columns:1.5fr 1fr; gap:1.1rem; margin-bottom:1.4rem; }
+.panel { background:var(--surface); border:1px solid var(--ring); border-radius:var(--radius); padding:1.2rem 1.3rem; }
+.panel h3 { font-size:.95rem; margin-bottom:.2rem; }
+.panel .p-sub { font-size:.78rem; color:var(--ink-mute); margin-bottom:1rem; }
+.legend { display:flex; gap:1.1rem; font-size:.75rem; color:var(--ink-2); margin-bottom:.6rem; flex-wrap:wrap; }
+.legend i { display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:.35rem; vertical-align:-1px; }
+.chart-wrap { position:relative; }
+.chart-wrap svg { display:block; width:100%; height:auto; }
+.tooltip {
+  position:absolute; pointer-events:none; background:#0d0d0dee; border:1px solid var(--ring);
+  border-radius:7px; padding:.45rem .7rem; font-size:.75rem; color:var(--ink);
+  transform:translate(-50%,-110%); white-space:nowrap; opacity:0; transition:opacity .12s;
+}
+.tooltip b { color:var(--accent); }
+
+.grid2 { display:grid; grid-template-columns:1.5fr 1fr; gap:1.1rem; }
+table.sys { width:100%; border-collapse:collapse; font-size:.85rem; }
+table.sys th {
+  text-align:left; font-size:.7rem; letter-spacing:.08em; text-transform:uppercase;
+  color:var(--ink-mute); font-weight:650; padding:.5rem .6rem; border-bottom:1px solid var(--baseline);
+}
+table.sys td { padding:.65rem .6rem; border-bottom:1px solid var(--grid); color:var(--ink-2); }
+table.sys td:first-child { color:var(--ink); font-weight:600; }
+table.sys .score { font-variant-numeric:tabular-nums; font-weight:750; }
+.bar-score { display:inline-block; width:52px; height:6px; border-radius:3px; background:var(--grid); margin-right:.5rem; vertical-align:2px; overflow:hidden; }
+.bar-score i { display:block; height:100%; border-radius:3px; }
+
+.feed li { list-style:none; display:flex; gap:.8rem; padding:.7rem 0; border-bottom:1px solid var(--grid); font-size:.84rem; }
+.feed li:last-child { border-bottom:none; }
+.feed .dot { flex:none; width:9px; height:9px; border-radius:50%; margin-top:.45rem; }
+.feed b { color:var(--ink); display:block; font-weight:650; }
+.feed time { color:var(--ink-mute); font-size:.72rem; }
+
+.comp { display:grid; grid-template-columns:repeat(4,1fr); gap:1.1rem; margin-top:1.4rem; }
+.comp .c {
+  background:var(--surface); border:1px solid var(--ring); border-radius:var(--radius);
+  padding:1rem 1.1rem; font-size:.8rem;
+}
+.comp b { display:block; color:var(--ink); font-size:.88rem; margin-bottom:.25rem; }
+
+/* ---------- Footer ---------- */
+footer { border-top:1px solid var(--ring); padding:2.2rem 0; font-size:.78rem; color:var(--ink-mute); }
+footer .container { display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap; }
+
+/* ---------- Responsivo ---------- */
+@media (max-width: 980px) {
+  .market-grid, .tiles, .comp { grid-template-columns:repeat(2,1fr); }
+  .cards3, .roadmap, .charts, .grid2 { grid-template-columns:1fr; }
+  .problem-list { grid-template-columns:1fr; }
+}
+@media (max-width: 560px) {
+  .market-grid, .tiles, .comp { grid-template-columns:1fr; }
+  .views button { padding:.5rem .7rem; font-size:.78rem; }
+}
+@media (prefers-reduced-motion: reduce) { html{scroll-behavior:auto} .card:hover,.btn-primary:hover{transform:none} }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="container top-inner">
+    <a class="logo" href="#" onclick="showView('landing');return false;">
+      <span class="logo-mark">S</span> SENTINELA
+    </a>
+    <nav class="views" aria-label="Alternar visão">
+      <button id="btnLanding" class="active" onclick="showView('landing')">Visão do Investidor</button>
+      <button id="btnDash" onclick="showView('dash')">Demo da Plataforma</button>
+    </nav>
+  </div>
+</header>
+
+<!-- ==================== LANDING (INVESTIDOR) ==================== -->
+<main id="viewLanding" class="landing">
+
+  <section class="hero">
+    <div class="hero-glow"></div>
+    <div class="container">
+      <p class="eyebrow">AI Risk · Auditoria · Monitoramento Contínuo</p>
+      <h1>A camada de confiança para IA em produção na América Latina.</h1>
+      <p class="lead">
+        Apólices de E&amp;O e cyber estão excluindo perdas causadas por IA — e as empresas que
+        automatizam com agentes ficam com o risco descoberto. A SENTINELA audita, pontua e
+        monitora sistemas de IA continuamente, construindo o ativo mais valioso desse mercado:
+        <strong style="color:#fff">dados proprietários de risco de IA na região</strong>.
+      </p>
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="#" onclick="showView('dash');return false;">Ver demo da plataforma</a>
+        <a class="btn btn-ghost" href="#modelo">Modelo de negócio</a>
+      </div>
+      <p class="hero-note">MVP demonstrativo · dados fictícios · São Paulo, Brasil</p>
+    </div>
+  </section>
+
+  <div class="market-strip">
+    <div class="container market-grid">
+      <div class="m"><b>US$ 50M</b><span>maior limite de cobertura de IA já ofertado (AIUC, 2026)</span></div>
+      <div class="m"><b>5+</b><span>players globais especializados — nenhum focado na América Latina</span></div>
+      <div class="m"><b>2018</b><span>Munich Re opera garantia de performance de IA (aiSure)</span></div>
+      <div class="m"><b>0</b><span>players dedicados de AI risk cobrindo o mercado latino-americano</span></div>
+    </div>
+  </div>
+
+  <section class="section">
+    <div class="container">
+      <p class="eyebrow">O problema</p>
+      <h2>A IA entrou na operação. O risco ficou sem dono.</h2>
+      <p class="section-lead">Empresas estão colocando agentes de IA em atendimento, análise de
+      documentos e back-office — enquanto o mercado segurador retira silenciosamente a cobertura.</p>
+      <ul class="problem-list">
+        <li>Seguradoras adicionam <strong>exclusões de IA</strong> em apólices de E&amp;O, GL e D&amp;O</li>
+        <li>Ninguém na empresa sabe dizer <strong>quanto custa um erro do agente</strong> de IA</li>
+        <li>Alucinações, vazamento de dados e drift de modelo <strong>não são monitorados</strong></li>
+        <li>Reguladores avançam (LGPD, EU AI Act, SUSEP) e <strong>exigirão evidências</strong></li>
+        <li>Sem histórico de incidentes, <strong>não há como precificar</strong> nem transferir o risco</li>
+        <li>Consultorias tradicionais auditam uma vez — <strong>o risco de IA muda toda semana</strong></li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="section alt" id="modelo">
+    <div class="container">
+      <p class="eyebrow">A solução · modelo de receita</p>
+      <h2>Audit → Score → Monitoramento. E então, seguro.</h2>
+      <p class="section-lead">Entrada com receita de serviços validada no mercado global — o mesmo
+      caminho que a AIUC percorreu antes de captar capacidade de underwriting.</p>
+      <div class="cards3">
+        <div class="card">
+          <span class="num">1</span>
+          <h3>Auditoria de Risco de IA</h3>
+          <p>Avaliação pontual dos sistemas de IA em produção: arquitetura, guardrails,
+          dados, revisão humana e exposição financeira estimada. Relatório com score SENTINELA.</p>
+          <span class="price">US$ 2.500 / auditoria</span>
+        </div>
+        <div class="card">
+          <span class="num">2</span>
+          <h3>Monitoramento Contínuo</h3>
+          <p>Telemetria de precisão, drift, alucinação e incidentes por sistema, com alertas
+          e re-score automático. Evidência viva para clientes, seguradoras e reguladores.</p>
+          <span class="price">US$ 500 / mês / sistema</span>
+        </div>
+        <div class="card">
+          <span class="num">3</span>
+          <h3>Distribuição de Seguro <small style="color:var(--ink-mute);font-size:.7em">(fase 3)</small></h3>
+          <p>Com base proprietária de incidentes da região, viramos parceiro de distribuição e
+          underwriting de players globais (Armilla, Munich Re) para a América Latina — sem carregar balanço.</p>
+          <span class="price">Comissão + acesso a dados</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <p class="eyebrow">Por que agora · por que nós</p>
+      <h2>O mercado global validou a tese. A região está descoberta.</h2>
+      <p class="section-lead">Armilla/Chaucer (US$ 25M, fev/2026), AIUC/Beazley (US$ 50M, mar/2026),
+      Munich Re aiSure, Corgi, Testudo, Klaimee — todos focados em EUA e Europa. Nenhum olha para
+      a América Latina, onde as mesmas exclusões de apólice chegam agora.</p>
+      <div class="roadmap">
+        <div class="phase" data-fase="Fase 1 · 0–12m">
+          <h3>Serviços &amp; validação</h3>
+          <p>20 auditorias pagas em fintechs e empresas SaaS brasileiras. Foco em workflows
+          controláveis: suporte, documentos, back-office.</p>
+          <p class="goal">Meta: US$ 110k ARR · 12 sistemas monitorados</p>
+        </div>
+        <div class="phase" data-fase="Fase 2 · 12–24m">
+          <h3>Dados proprietários</h3>
+          <p>Base regional de incidentes e perdas de IA — o ativo que nenhum player global tem
+          sobre a América Latina. Score SENTINELA vira referência de mercado.</p>
+          <p class="goal">Meta: 80 sistemas monitorados · 500+ incidentes catalogados</p>
+        </div>
+        <div class="phase" data-fase="Fase 3 · 24m+">
+          <h3>Parceria de underwriting</h3>
+          <p>Distribuição local de cobertura de IA com capacidade de um parceiro global —
+          nós trazemos o cliente, o score e o monitoramento; eles, o balanço.</p>
+          <p class="goal">Meta: primeiro programa de seguro de IA da América Latina</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="cta-band section alt">
+    <div class="container">
+      <p class="eyebrow">Rodada semente</p>
+      <h2>Buscamos parceiros para abrir essa categoria na região.</h2>
+      <p>Explore a demo da plataforma ao lado — auditoria, score e monitoramento
+      funcionando sobre um cliente fictício.</p>
+      <a class="btn btn-primary" href="#" onclick="showView('dash');return false;">Abrir demo da plataforma →</a>
+    </div>
+  </section>
+
+</main>
+
+<!-- ==================== DASHBOARD (DEMO) ==================== -->
+<main id="viewDash" class="dash container">
+
+  <div class="demo-banner">⚠ Ambiente de demonstração — todos os dados são fictícios</div>
+
+  <div class="dash-head">
+    <div>
+      <h2>Fintech Aurora</h2>
+      <span class="client">Cliente demo · 6 sistemas de IA em produção · plano Monitoramento Contínuo</span>
+    </div>
+    <div class="filters" role="group" aria-label="Período">
+      <button>7 dias</button>
+      <button class="active">30 dias</button>
+      <button>90 dias</button>
+    </div>
+  </div>
+
+  <div class="tiles">
+    <div class="tile">
+      <span class="t-label">Score SENTINELA</span>
+      <span class="t-value">68<span style="font-size:.5em;color:var(--ink-mute)">/100</span></span>
+      <span class="t-sub"><span class="pill serious">▲ Atenção</span> −6 pts em 30 dias</span>
+    </div>
+    <div class="tile">
+      <span class="t-label">Sistemas monitorados</span>
+      <span class="t-value">6</span>
+      <span class="t-sub">2 de alta criticidade</span>
+    </div>
+    <div class="tile">
+      <span class="t-label">Alertas · 30 dias</span>
+      <span class="t-value">14</span>
+      <span class="t-sub"><span class="pill critical">3 críticos</span></span>
+    </div>
+    <div class="tile">
+      <span class="t-label">Exposição estimada não coberta</span>
+      <span class="t-value">R$ 4,2M</span>
+      <span class="t-sub">apólice E&amp;O atual exclui IA</span>
+    </div>
+  </div>
+
+  <div class="charts">
+    <div class="panel">
+      <h3>Precisão do agente de suporte</h3>
+      <p class="p-sub">Últimos 30 dias · % de respostas corretas em amostra auditada · limiar contratado: 90%</p>
+      <div class="chart-wrap" id="lineWrap">
+        <svg id="lineChart" viewBox="0 0 640 260" role="img" aria-label="Gráfico de linha da precisão do agente de suporte nos últimos 30 dias, com queda abaixo do limiar de 90% após atualização do modelo no dia 18"></svg>
+        <div class="tooltip" id="lineTip"></div>
+      </div>
+    </div>
+    <div class="panel">
+      <h3>Alertas por semana</h3>
+      <p class="p-sub">Últimas 6 semanas · por severidade</p>
+      <div class="legend">
+        <span><i style="background:var(--warning)"></i>⚠ Aviso</span>
+        <span><i style="background:var(--serious)"></i>▲ Sério</span>
+        <span><i style="background:var(--critical)"></i>● Crítico</span>
+      </div>
+      <div class="chart-wrap" id="barWrap">
+        <svg id="barChart" viewBox="0 0 360 240" role="img" aria-label="Gráfico de barras empilhadas de alertas por semana nas últimas seis semanas, por severidade"></svg>
+        <div class="tooltip" id="barTip"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div class="panel">
+      <h3>Sistemas de IA</h3>
+      <p class="p-sub">Score por sistema · re-score automático a cada 24h</p>
+      <table class="sys">
+        <thead><tr><th>Sistema</th><th>Modelo base</th><th>Criticidade</th><th>Score</th><th>30d</th></tr></thead>
+        <tbody>
+          <tr><td>Triagem de crédito</td><td>Interno + LLM</td><td><span class="pill critical">Alta</span></td>
+              <td><span class="bar-score"><i style="width:52%;background:var(--critical)"></i></span><span class="score">52</span></td><td style="color:var(--critical)">▼ 9</td></tr>
+          <tr><td>Chatbot de suporte</td><td>GPT-4o</td><td><span class="pill serious">Média</span></td>
+              <td><span class="bar-score"><i style="width:61%;background:var(--serious)"></i></span><span class="score">61</span></td><td style="color:var(--critical)">▼ 7</td></tr>
+          <tr><td>Antifraude</td><td>Interno</td><td><span class="pill critical">Alta</span></td>
+              <td><span class="bar-score"><i style="width:69%;background:var(--warning)"></i></span><span class="score">69</span></td><td style="color:var(--ink-mute)">—</td></tr>
+          <tr><td>Análise de documentos</td><td>Claude</td><td><span class="pill warning">Média</span></td>
+              <td><span class="bar-score"><i style="width:74%;background:var(--warning)"></i></span><span class="score">74</span></td><td style="color:var(--good)">▲ 3</td></tr>
+          <tr><td>Resumo de contratos</td><td>Claude</td><td><span class="pill good">Baixa</span></td>
+              <td><span class="bar-score"><i style="width:77%;background:var(--good)"></i></span><span class="score">77</span></td><td style="color:var(--good)">▲ 2</td></tr>
+          <tr><td>RPA + LLM back-office</td><td>GPT-4o mini</td><td><span class="pill good">Baixa</span></td>
+              <td><span class="bar-score"><i style="width:81%;background:var(--good)"></i></span><span class="score">81</span></td><td style="color:var(--good)">▲ 1</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="panel">
+      <h3>Incidentes recentes</h3>
+      <p class="p-sub">Detectados pelo monitoramento contínuo</p>
+      <ul class="feed">
+        <li><span class="dot" style="background:var(--critical)"></span>
+          <div><b>Queda de precisão pós-atualização do modelo</b>
+          Agente de suporte abaixo do limiar de 90% desde o dia 18.<br/><time>há 2 dias · crítico · aberto</time></div></li>
+        <li><span class="dot" style="background:var(--critical)"></span>
+          <div><b>Dado pessoal em prompt sem mascaramento</b>
+          CPF detectado em chamada à API externa (LGPD).<br/><time>há 5 dias · crítico · mitigado</time></div></li>
+        <li><span class="dot" style="background:var(--serious)"></span>
+          <div><b>Alucinação em resposta a cliente</b>
+          Agente prometeu isenção de tarifa inexistente.<br/><time>há 9 dias · sério · resolvido</time></div></li>
+        <li><span class="dot" style="background:var(--warning)"></span>
+          <div><b>Resposta fora da política de crédito</b>
+          Triagem aprovou perfil fora da régua definida.<br/><time>há 12 dias · aviso · resolvido</time></div></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="comp">
+    <div class="c"><b>LGPD</b><span class="pill serious">▲ Parcial</span><br/>Mascaramento de PII pendente em 2 sistemas.</div>
+    <div class="c"><b>EU AI Act</b><span class="pill warning">⚠ Mapeado</span><br/>Aplicável se exportar — classificação de risco feita.</div>
+    <div class="c"><b>SUSEP / BACEN</b><span class="pill good">✓ Aderente</span><br/>Governança de modelos documentada.</div>
+    <div class="c"><b>ISO/IEC 42001</b><span class="pill warning">⚠ Em progresso</span><br/>Gap assessment concluído — 61% dos controles.</div>
+  </div>
+
+</main>
+
+<footer>
+  <div class="container">
+    <span><strong style="color:var(--ink)">SENTINELA</strong> · MVP demonstrativo para investidores</span>
+    <span>Todos os dados exibidos são fictícios · São Paulo · 2026</span>
+  </div>
+</footer>
+
+<script>
+/* ---------- alternância de visões ---------- */
+function showView(v){
+  var landing=document.getElementById('viewLanding'), dash=document.getElementById('viewDash');
+  var bL=document.getElementById('btnLanding'), bD=document.getElementById('btnDash');
+  var isDash = v==='dash';
+  landing.classList.toggle('hidden', isDash);
+  dash.classList.toggle('visible', isDash);
+  bL.classList.toggle('active', !isDash);
+  bD.classList.toggle('active', isDash);
+  window.scrollTo({top:0, behavior:'auto'});
+  if(isDash && !window.__chartsDrawn){ drawLine(); drawBars(); window.__chartsDrawn=true; }
+}
+
+/* ---------- dados fictícios ---------- */
+var acc=[94.1,94.3,93.8,94.0,93.6,93.9,94.2,93.5,93.7,93.4,93.8,93.2,93.5,93.1,93.4,93.0,92.8,90.9,89.4,88.9,88.6,88.8,88.3,88.5,88.1,88.4,88.0,88.2,87.9,88.1];
+var weeks=[{w:'S1',a:1,s:1,c:0},{w:'S2',a:2,s:0,c:0},{w:'S3',a:1,s:1,c:0},{w:'S4',a:2,s:1,c:1},{w:'S5',a:1,s:1,c:1},{w:'S6',a:0,s:1,c:1}];
+
+/* ---------- linha: precisão + limiar + evento ---------- */
+function drawLine(){
+  var svg=document.getElementById('lineChart'), tip=document.getElementById('lineTip'), wrap=document.getElementById('lineWrap');
+  var W=640,H=260,padL=44,padR=14,padT=18,padB=30;
+  var iw=W-padL-padR, ih=H-padT-padB, min=86, max=96;
+  function x(i){return padL+iw*i/(acc.length-1);}
+  function y(v){return padT+ih*(1-(v-min)/(max-min));}
+  var s='';
+  /* grade horizontal */
+  [86,88,90,92,94,96].forEach(function(g){
+    s+='<line x1="'+padL+'" y1="'+y(g)+'" x2="'+(W-padR)+'" y2="'+y(g)+'" stroke="#2c2c2a" stroke-width="1"/>';
+    s+='<text x="'+(padL-8)+'" y="'+(y(g)+4)+'" fill="#898781" font-size="11" text-anchor="end">'+g+'%</text>';
+  });
+  /* zona abaixo do limiar */
+  s+='<rect x="'+padL+'" y="'+y(90)+'" width="'+iw+'" height="'+(y(min)-y(90))+'" fill="rgba(208,59,59,0.07)"/>';
+  /* limiar 90% */
+  s+='<line x1="'+padL+'" y1="'+y(90)+'" x2="'+(W-padR)+'" y2="'+y(90)+'" stroke="#d03b3b" stroke-width="1.5" stroke-dasharray="5 4"/>';
+  s+='<text x="'+(W-padR)+'" y="'+(y(90)-6)+'" fill="#d03b3b" font-size="11" text-anchor="end">limiar 90%</text>';
+  /* evento dia 18 */
+  s+='<line x1="'+x(17)+'" y1="'+padT+'" x2="'+x(17)+'" y2="'+(H-padB)+'" stroke="#898781" stroke-width="1" stroke-dasharray="2 3"/>';
+  s+='<text x="'+(x(17)+5)+'" y="'+(padT+10)+'" fill="#c3c2b7" font-size="11">atualização do modelo</text>';
+  /* série */
+  var d=acc.map(function(v,i){return (i?'L':'M')+x(i).toFixed(1)+' '+y(v).toFixed(1);}).join(' ');
+  s+='<path d="'+d+'" fill="none" stroke="#3987e5" stroke-width="2" stroke-linejoin="round"/>';
+  /* último ponto em destaque */
+  s+='<circle cx="'+x(acc.length-1)+'" cy="'+y(acc[acc.length-1])+'" r="4" fill="#3987e5" stroke="#1a1a19" stroke-width="2"/>';
+  s+='<text x="'+(x(acc.length-1)-8)+'" y="'+(y(acc[acc.length-1])+16)+'" fill="#ffffff" font-size="12" font-weight="700" text-anchor="end">'+acc[acc.length-1].toFixed(1)+'%</text>';
+  /* eixo x */
+  s+='<text x="'+padL+'" y="'+(H-8)+'" fill="#898781" font-size="11">dia 1</text>';
+  s+='<text x="'+(W-padR)+'" y="'+(H-8)+'" fill="#898781" font-size="11" text-anchor="end">dia 30</text>';
+  /* crosshair */
+  s+='<line id="ch" x1="0" y1="'+padT+'" x2="0" y2="'+(H-padB)+'" stroke="#c3c2b7" stroke-width="1" opacity="0"/>';
+  s+='<circle id="chDot" r="4" fill="#3987e5" stroke="#1a1a19" stroke-width="2" opacity="0"/>';
+  svg.innerHTML=s;
+  /* hover */
+  svg.addEventListener('mousemove',function(e){
+    var r=svg.getBoundingClientRect(), sx=W/r.width;
+    var mx=(e.clientX-r.left)*sx;
+    var i=Math.round((mx-padL)/iw*(acc.length-1));
+    if(i<0||i>acc.length-1){hide();return;}
+    var ch=svg.querySelector('#ch'), dot=svg.querySelector('#chDot');
+    ch.setAttribute('x1',x(i)); ch.setAttribute('x2',x(i)); ch.setAttribute('opacity','.5');
+    dot.setAttribute('cx',x(i)); dot.setAttribute('cy',y(acc[i])); dot.setAttribute('opacity','1');
+    tip.style.opacity=1;
+    tip.style.left=(x(i)/sx)+'px';
+    tip.style.top=(y(acc[i])/ (H/r.height))+'px';
+    tip.innerHTML='Dia '+(i+1)+' · <b>'+acc[i].toFixed(1)+'%</b>'+(acc[i]<90?' · abaixo do limiar':'');
+  });
+  function hide(){ tip.style.opacity=0;
+    var ch=svg.querySelector('#ch'), dot=svg.querySelector('#chDot');
+    if(ch){ch.setAttribute('opacity','0');dot.setAttribute('opacity','0');}
+  }
+  svg.addEventListener('mouseleave',hide);
+}
+
+/* ---------- barras empilhadas: alertas/semana ---------- */
+function drawBars(){
+  var svg=document.getElementById('barChart'), tip=document.getElementById('barTip');
+  var W=360,H=240,padL=30,padR=8,padT=12,padB=26;
+  var iw=W-padL-padR, ih=H-padT-padB, maxV=5;
+  var bw=Math.min(34, iw/weeks.length*0.55);
+  var colors={a:'#fab219',s:'#ec835a',c:'#d03b3b'}, names={a:'Aviso',s:'Sério',c:'Crítico'};
+  var s='';
+  [0,1,2,3,4,5].forEach(function(g){
+    var gy=padT+ih*(1-g/maxV);
+    s+='<line x1="'+padL+'" y1="'+gy+'" x2="'+(W-padR)+'" y2="'+gy+'" stroke="#2c2c2a" stroke-width="1"/>';
+    s+='<text x="'+(padL-6)+'" y="'+(gy+4)+'" fill="#898781" font-size="10" text-anchor="end">'+g+'</text>';
+  });
+  weeks.forEach(function(wk,i){
+    var cx=padL+iw*(i+0.5)/weeks.length, x0=cx-bw/2, acc2=0;
+    ['a','s','c'].forEach(function(k){
+      var v=wk[k]; if(!v) return;
+      var y1=padT+ih*(1-(acc2+v)/maxV), h=ih*v/maxV-2; /* 2px de vão entre segmentos */
+      if(h<2)h=2;
+      s+='<rect data-w="'+wk.w+'" data-k="'+k+'" data-v="'+v+'" x="'+x0+'" y="'+y1+'" width="'+bw+'" height="'+h+'" rx="3" fill="'+colors[k]+'"/>';
+      acc2+=v;
+    });
+    s+='<text x="'+cx+'" y="'+(H-8)+'" fill="#898781" font-size="10" text-anchor="middle">'+wk.w+'</text>';
+  });
+  svg.innerHTML=s;
+  svg.querySelectorAll('rect').forEach(function(rc){
+    rc.addEventListener('mousemove',function(e){
+      var r=svg.getBoundingClientRect();
+      tip.style.opacity=1;
+      tip.style.left=(e.clientX-r.left)+'px';
+      tip.style.top=(e.clientY-r.top-6)+'px';
+      tip.innerHTML=rc.dataset.w+' · '+names[rc.dataset.k]+': <b>'+rc.dataset.v+'</b>';
+    });
+    rc.addEventListener('mouseleave',function(){tip.style.opacity=0;});
+  });
+}
+</script>
+</body>
+</html>
