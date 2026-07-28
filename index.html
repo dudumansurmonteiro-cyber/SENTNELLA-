@@ -320,7 +320,7 @@ footer strong { color:var(--gold); font-family:var(--serif); letter-spacing:.18e
     <div class="container market-grid">
       <div class="m rv"><b><span class="cu" data-prefix="US$ " data-to="50" data-suffix="M">0</span></b><span>maior limite de cobertura de IA já ofertado (AIUC, 2026)</span></div>
       <div class="m rv"><b><span class="cu" data-to="5" data-suffix="+">0</span></b><span>players globais especializados — nenhum focado na América Latina</span></div>
-      <div class="m rv"><b><span class="cu" data-to="2018">0</span></b><span>Munich Re opera garantia de performance de IA (aiSure)</span></div>
+      <div class="m rv"><b><span class="cu" data-to="2018" data-raw="1">0</span></b><span>Munich Re opera garantia de performance de IA (aiSure)</span></div>
       <div class="m rv"><b><span class="cu" data-to="0">0</span></b><span>players dedicados de AI risk cobrindo o mercado latino-americano</span></div>
     </div>
   </div>
@@ -388,8 +388,8 @@ footer strong { color:var(--gold); font-family:var(--serif); letter-spacing:.18e
             <input type="range" id="rSys" min="1" max="20" value="6" oninput="calc()">
           </div>
           <div class="field">
-            <label>Decisões automatizadas por mês <output id="oVol">40 mil</output></label>
-            <input type="range" id="rVol" min="1" max="100" value="35" oninput="calc()">
+            <label>Decisões automatizadas por mês <output id="oVol">39 mil</output></label>
+            <input type="range" id="rVol" min="1" max="100" value="54" oninput="calc()">
           </div>
           <div class="field">
             <label>Criticidade média dos workflows</label>
@@ -619,14 +619,16 @@ function fmtInt(v){ return Math.round(v).toLocaleString('pt-BR'); }
 function animateCount(el){
   var to=parseFloat(el.dataset.to), dec=parseInt(el.dataset.dec||'0',10);
   var pre=el.dataset.prefix||'', suf=el.dataset.suffix||'';
-  if(reduced){ el.textContent=pre+to.toLocaleString('pt-BR',{minimumFractionDigits:dec,maximumFractionDigits:dec})+suf; return; }
+  /* data-raw: sem separador de milhar (ex.: anos) */
+  function fmt(v){ return el.dataset.raw? String(Math.round(v)) : v.toLocaleString('pt-BR',{minimumFractionDigits:dec,maximumFractionDigits:dec}); }
+  if(reduced){ el.textContent=pre+fmt(to)+suf; return; }
   var t0=null, dur=1400;
   function step(ts){
     if(!t0) t0=ts;
     var p=Math.min(1,(ts-t0)/dur);
     var e=1-Math.pow(1-p,3); /* easeOutCubic */
     var val=to*e;
-    el.textContent=pre+val.toLocaleString('pt-BR',{minimumFractionDigits:dec,maximumFractionDigits:dec})+suf;
+    el.textContent=pre+fmt(val)+suf;
     if(p<1) requestAnimationFrame(step);
   }
   requestAnimationFrame(step);
