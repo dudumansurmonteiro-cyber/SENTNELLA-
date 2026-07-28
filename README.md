@@ -18,8 +18,8 @@ Modelo de receita em três fases:
 
 `index.html` é um MVP demonstrativo em arquivo único (HTML + CSS + JS, sem dependências), com duas visões:
 
-- **Visão do Investidor** — landing page com problema, modelo de negócio, validação do mercado global e roadmap em 3 fases
-- **Demo da Plataforma** — dashboard de um cliente fictício ("Fintech Aurora") com score, gráficos de precisão e alertas, tabela de sistemas de IA, feed de incidentes e status de compliance (LGPD, EU AI Act, SUSEP/BACEN, ISO/IEC 42001)
+- **Visão do Investidor** — landing page com problema, modelo de negócio, calculadora interativa de exposição a risco de IA, validação do mercado global e roadmap em 3 fases
+- **Demo da Plataforma** — dashboard de um cliente fictício ("Fintech Aurora") com telemetria ao vivo, score com gauge animado, gráficos de precisão e alertas com filtro de período (7/30/90 dias), tabela de sistemas de IA com sparklines, feed de incidentes em tempo real e status de compliance (LGPD, EU AI Act, SUSEP/BACEN, ISO/IEC 42001)
 
 > ⚠ Todos os dados exibidos são fictícios — ambiente de demonstração.
 
