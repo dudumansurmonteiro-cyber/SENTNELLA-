@@ -1,0 +1,335 @@
+---
+import Base from '../layouts/Base.astro';
+import PainelSimulado from '../components/PainelSimulado.astro';
+import FluxoExcecao from '../components/FluxoExcecao.astro';
+import TabelaSla from '../components/TabelaSla.astro';
+import FormularioContato from '../components/FormularioContato.astro';
+---
+<Base
+  titulo="Sentinella — construímos a sua IA e ficamos operando ela"
+  descricao="Agentes de inteligência artificial para atendimento, vendas e cobrança — com uma central humana acompanhando as conversas das 8h às 22h."
+>
+  <!-- Hero -->
+  <section class="hero">
+    <div class="container hero-grade">
+      <div class="hero-texto">
+        <h1>Construímos a sua IA. E ficamos operando ela.</h1>
+        <p class="hero-sub">
+          Agentes de inteligência artificial para atendimento, vendas e cobrança —
+          e monitoramento de qualquer IA da sua operação, com uma central humana
+          acompanhando das 8h às 22h.
+        </p>
+        <div class="hero-acoes">
+          <a class="btn" href="#contato">Agendar diagnóstico</a>
+          <a class="btn btn-secundario" href="#operacao">Ver como operamos</a>
+        </div>
+      </div>
+      <div class="hero-painel">
+        <PainelSimulado />
+      </div>
+    </div>
+  </section>
+
+  <!-- O problema -->
+  <section class="section" id="problema">
+    <div class="container">
+      <h2>Toda empresa que contrata um agente de IA fica com um sistema que ninguém opera.</h2>
+      <p class="section-intro">
+        A agência entrega, treina duas pessoas e vai embora. Três semanas depois o agente
+        promete um prazo que não existe, um cliente pede para falar com alguém e ninguém vê.
+        A IA não erra por ser ruim. Erra porque ninguém está olhando.
+      </p>
+    </div>
+  </section>
+
+  <!-- Como operamos -->
+  <section class="section" id="operacao">
+    <div class="container">
+      <h2>Três etapas. A terceira não termina.</h2>
+      <div class="etapas">
+        <div class="etapa">
+          <span class="num" aria-hidden="true">1</span>
+          <h3>Construir</h3>
+          <p class="quando">2 a 6 semanas</p>
+          <p>
+            Diagnóstico dos fluxos de conversa e dos sistemas envolvidos (CRM, WhatsApp,
+            ERP, agenda), desenho do que o agente faz sozinho e do que vai para humano,
+            construção sobre o núcleo padronizado da Sentinella, homologação com conversas
+            reais e entrada em produção gradual.
+          </p>
+        </div>
+        <div class="etapa">
+          <span class="num" aria-hidden="true">2</span>
+          <h3>Operar</h3>
+          <p class="quando">mensal, contínuo</p>
+          <p>
+            Central de operação humana das 8h às 22h. O sistema classifica cada conversa e
+            decisão em tempo real; o analista atua só nas exceções — assume em até 5 minutos,
+            resolve ou transfere, registra o incidente e corrige a regra quando é o caso.
+            Fora do horário, o agente entra em modo conservador e deixa o restante para o
+            primeiro turno revisar às 8h.
+          </p>
+        </div>
+        <div class="etapa">
+          <span class="num" aria-hidden="true">3</span>
+          <h3>Evoluir</h3>
+          <p class="quando">contínuo</p>
+          <p>
+            Revisão quinzenal com o cliente, relatório mensal com volume, taxa de resolução
+            pela IA, exceções por mil conversas, tempo médio de intervenção, incidentes e o
+            Score Sentinella — índice de 0 a 100 da saúde da operação. Ajustes de prompt,
+            regras e integrações incluídos na mensalidade.
+          </p>
+        </div>
+      </div>
+
+      <h3 class="sub-bloco">O que transfere a conversa para um analista</h3>
+      <ul class="lista">
+        <li>Cliente pede para falar com humano.</li>
+        <li>Sinais de irritação ou frustração.</li>
+        <li>Tema sensível: cancelamento, reclamação formal, dados pessoais, saúde, questão jurídica, ameaça.</li>
+        <li>Agente sem resposta confiável ou repetindo a mesma resposta.</li>
+        <li>Ação com valor financeiro ou efeito irreversível acima do limite definido com o cliente.</li>
+        <li>Resposta que viola a política escrita do cliente.</li>
+      </ul>
+
+      <h3 class="sub-bloco">O caminho de uma exceção</h3>
+      <FluxoExcecao />
+      <p class="section-intro">
+        <a href="/como-operamos">Ver o quadro operacional completo</a>
+      </p>
+    </div>
+  </section>
+
+  <!-- O que o cliente vê -->
+  <section class="section" id="transparencia">
+    <div class="container">
+      <h2>Você vê tudo o que a IA fez. E tudo o que a gente fez.</h2>
+      <p class="section-intro">
+        Painel com as conversas, as decisões automatizadas, as exceções, quem interveio
+        e por quê. Relatório mensal com o Score Sentinella da sua operação. Sem caixa-preta.
+      </p>
+    </div>
+  </section>
+
+  <!-- Casos de uso -->
+  <section class="section" id="casos">
+    <div class="container">
+      <h2>Onde a IA entra</h2>
+      <dl class="casos">
+        <div>
+          <dt>Atendimento e pós-venda</dt>
+          <dd>Responde, resolve e transfere quando precisa — sem deixar ninguém sem resposta.</dd>
+        </div>
+        <div>
+          <dt>Vendas e qualificação</dt>
+          <dd>Conversa com o lead, entende o que ele precisa e agenda com o vendedor certo.</dd>
+        </div>
+        <div>
+          <dt>Cobrança e negociação</dt>
+          <dd>Lembra, negocia dentro das regras que você definiu e nunca ultrapassa o limite sem um humano aprovar.</dd>
+        </div>
+        <div>
+          <dt>Triagem e agendamento</dt>
+          <dd>Coleta o que precisa, direciona e marca. Casos sensíveis vão para uma pessoa em minutos.</dd>
+        </div>
+        <div>
+          <dt>Processos e decisões automatizadas</dt>
+          <dd>Acompanhamos a IA que classifica, prioriza e distribui — leads, documentos, pedidos. Saiu da régua que você definiu, um analista revisa e corrige.</dd>
+        </div>
+        <div>
+          <dt>Uso de IA pela sua equipe</dt>
+          <dd>Olhamos como o seu time usa IA no dia a dia — prompts, respostas aproveitadas, dados que não podem sair — e orientamos quem usa.</dd>
+        </div>
+      </dl>
+    </div>
+  </section>
+
+  <!-- SLA -->
+  <section class="section" id="sla">
+    <div class="container">
+      <h2>O que assumimos por escrito.</h2>
+      <TabelaSla />
+      <p class="nota">Responsabilidade contratual com teto definido. Sem letras miúdas.</p>
+    </div>
+  </section>
+
+  <!-- Planos -->
+  <section class="section" id="planos">
+    <div class="container">
+      <h2>Um projeto para construir. Uma mensalidade para operar.</h2>
+      <div class="tabela-wrap">
+        <table class="tabela">
+          <thead>
+            <tr>
+              <th scope="col">Item</th>
+              <th scope="col">O que inclui</th>
+              <th scope="col">Preço</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Construção</td>
+              <td>Etapa de construção completa, um agente, número de integrações <span class="sob-consulta">em definição</span></td>
+              <td>projeto fechado, <span class="sob-consulta">sob consulta</span></td>
+            </tr>
+            <tr>
+              <td>Operação</td>
+              <td>Operação e evolução contínuas, plano base</td>
+              <td><span class="sob-consulta">sob consulta</span>, por mês</td>
+            </tr>
+            <tr>
+              <td>Operação Plus</td>
+              <td>Atendimento 7 dias, analista dedicado, SLA reduzido</td>
+              <td><span class="sob-consulta">sob consulta</span>, por mês</td>
+            </tr>
+            <tr>
+              <td>Projeto-piloto</td>
+              <td>Construção com desconto e 3 meses de operação, em troca de caso de uso divulgável</td>
+              <td><a href="/piloto">condições na página do piloto</a></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- Por que a Sentinella -->
+  <section class="section" id="porque">
+    <div class="container">
+      <h2>Por que a Sentinella</h2>
+      <ul class="lista">
+        <li>Não vamos embora depois da entrega.</li>
+        <li>Humanos onde a IA não deve decidir sozinha.</li>
+        <li>Um núcleo padronizado, testado em todos os clientes, personalizado no que importa para você.</li>
+        <li>Seus dados e o seu agente são seus. Se sair, leva tudo.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="section" id="perguntas">
+    <div class="container">
+      <h2>Perguntas frequentes</h2>
+      <div class="faq">
+        <details>
+          <summary>A IA vai falar com meus clientes sem supervisão?</summary>
+          <p>
+            Não. Ela fala, e a central acompanha em tempo real das 8h às 22h. Fora desse
+            horário, opera em modo conservador e não executa ações críticas.
+          </p>
+        </details>
+        <details>
+          <summary>Quanto tempo leva para colocar no ar?</summary>
+          <p>Entre duas e seis semanas, dependendo das integrações.</p>
+        </details>
+        <details>
+          <summary>E se a IA errar?</summary>
+          <p>
+            O analista assume a conversa, resolve e registra o incidente. Se o erro veio de
+            uma regra nossa, corrigimos dentro do SLA e respondemos por prejuízo direto até
+            o teto do contrato.
+          </p>
+        </details>
+        <details>
+          <summary>Preciso ter time técnico?</summary>
+          <p>Não. Precisamos de alguém do seu lado para aprovar regras e receber transferências.</p>
+        </details>
+        <details>
+          <summary>Funciona no WhatsApp?</summary>
+          <p>Sim, e também em chat do site e e-mail. Outros canais estão <span class="sob-consulta">em definição</span>.</p>
+        </details>
+        <details>
+          <summary>Como fica a LGPD?</summary>
+          <p>
+            Contrato de tratamento de dados, dados hospedados em fornecedor
+            <span class="sob-consulta">em definição</span>, acesso registrado, e o cliente é
+            o controlador.
+          </p>
+        </details>
+        <details>
+          <summary>Vocês só operam IA que vocês construíram?</summary>
+          <p>
+            Não. Depois de um diagnóstico, colocamos sob monitoramento IA que você já usa —
+            de agente de conversa a automação de processos — e o uso de IA pela sua equipe.
+          </p>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <!-- Contato -->
+  <section class="section" id="contato">
+    <div class="container contato-grade">
+      <div>
+        <h2>Vamos começar pelo diagnóstico.</h2>
+        <p class="section-intro">
+          Conte onde a IA entraria na sua operação. A primeira conversa é um diagnóstico,
+          não uma apresentação de vendas.
+        </p>
+        <p class="section-intro texto-2">
+          Prefere escrever? E-mail de contato <span class="sob-consulta">em definição</span>
+          (domínio próprio).
+        </p>
+      </div>
+      <FormularioContato origem="principal" />
+    </div>
+  </section>
+</Base>
+
+<style>
+  .hero { padding-block: clamp(2.5rem, 6vw, 5.5rem) 0; }
+  .hero-grade {
+    display: grid;
+    gap: 2.6rem;
+    align-items: center;
+  }
+  .hero-sub {
+    margin-top: 1.3rem;
+    font-size: 1.12em;
+    color: var(--ink-2);
+  }
+  .hero-acoes {
+    margin-top: 2rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.8rem;
+  }
+  @media (min-width: 900px) {
+    .hero-grade {
+      grid-template-columns: 5fr 1fr 6fr;
+    }
+    .hero-texto { grid-column: 1; }
+    .hero-painel { grid-column: 3; }
+  }
+  .sub-bloco { margin-top: 3rem; }
+  .casos {
+    margin: 2.2rem 0 0;
+    display: grid;
+    gap: 1.8rem 3rem;
+  }
+  .casos dt {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-weight: 500;
+    font-size: 1.15rem;
+  }
+  .casos dd {
+    margin: 0.35rem 0 0;
+    color: var(--ink-2);
+    max-width: 52ch;
+  }
+  @media (min-width: 768px) {
+    .casos { grid-template-columns: 1fr 1fr; }
+  }
+  .contato-grade {
+    display: grid;
+    gap: 2.5rem;
+  }
+  @media (min-width: 900px) {
+    .contato-grade {
+      grid-template-columns: 5fr 6fr;
+      gap: 4rem;
+      align-items: start;
+    }
+  }
+</style>
