@@ -4,7 +4,9 @@
 
 ## 1. O que é a Sentinella
 
-A Sentinella é uma empresa de **IA gerenciada** para empresas brasileiras. Construímos agentes de inteligência artificial para atendimento, vendas, cobrança e triagem, e depois **operamos** esses agentes com uma central humana que acompanha as conversas das 8h às 22h, intervém quando a IA não deve decidir sozinha e ajusta o sistema continuamente.
+A Sentinella é uma empresa de **IA gerenciada** para empresas brasileiras. Construímos agentes de inteligência artificial para atendimento, vendas, cobrança e triagem — e colocamos sob operação **qualquer IA que trabalhe na empresa**: a que conversa com cliente, a que decide processo (classificar e distribuir leads, priorizar documentos) e a que a própria equipe usa no dia a dia (prompts, respostas, dados que não podem sair). Tudo com uma central humana que acompanha das 8h às 22h, intervém quando a IA não deve decidir sozinha e ajusta o sistema continuamente.
+
+Princípio do escopo: tudo o que a IA fizer pela empresa pode entrar — desde que entre **com monitoramento**.
 
 **Frase-síntese do posicionamento** (usar no site e em todo material):
 
@@ -108,7 +110,7 @@ Site de uma página principal com seções ancoradas, mais três páginas secund
 
 **Hero**
 - Título: Construímos a sua IA. E ficamos operando ela.
-- Subtítulo: Agentes de inteligência artificial para atendimento, vendas e cobrança — com uma central humana acompanhando as conversas das 8h às 22h.
+- Subtítulo: Agentes de inteligência artificial para atendimento, vendas e cobrança — e monitoramento de qualquer IA da sua operação, com uma central humana acompanhando das 8h às 22h.
 - Botão principal: Agendar diagnóstico (abre o formulário de contato)
 - Botão secundário: Ver como operamos (âncora para a seção de operação)
 - Elemento visual: painel de monitoramento simulado (ver seção 6).
@@ -123,13 +125,15 @@ Site de uma página principal com seções ancoradas, mais três páginas secund
 
 **O que o cliente vê**
 - Título: Você vê tudo o que a IA fez. E tudo o que a gente fez.
-- Texto: Painel com as conversas, as exceções, quem interveio e por quê. Relatório mensal com o Score Sentinella da sua operação. Sem caixa-preta.
+- Texto: Painel com as conversas, as decisões automatizadas, as exceções, quem interveio e por quê. Relatório mensal com o Score Sentinella da sua operação. Sem caixa-preta.
 
 **Onde a IA entra (casos de uso)**
 - Atendimento e pós-venda: Responde, resolve e transfere quando precisa — sem deixar ninguém sem resposta.
 - Vendas e qualificação: Conversa com o lead, entende o que ele precisa e agenda com o vendedor certo.
 - Cobrança e negociação: Lembra, negocia dentro das regras que você definiu e nunca ultrapassa o limite sem um humano aprovar.
 - Triagem e agendamento: Coleta o que precisa, direciona e marca. Casos sensíveis vão para uma pessoa em minutos.
+- Processos e decisões automatizadas: Acompanhamos a IA que classifica, prioriza e distribui — leads, documentos, pedidos. Saiu da régua que você definiu, um analista revisa e corrige.
+- Uso de IA pela sua equipe: Olhamos como o seu time usa IA no dia a dia — prompts, respostas aproveitadas, dados que não podem sair — e orientamos quem usa.
 
 **Compromissos (SLA)**
 - Título: O que assumimos por escrito.
@@ -152,10 +156,11 @@ Site de uma página principal com seções ancoradas, mais três páginas secund
 4. Preciso ter time técnico? Não. Precisamos de alguém do seu lado para aprovar regras e receber transferências.
 5. Funciona no WhatsApp? Sim, e também em chat do site, e-mail e telefone [confirmar canais].
 6. Como fica a LGPD? Contrato de tratamento de dados, dados hospedados [região/fornecedor], acesso registrado, e o cliente é o controlador.
+7. Vocês só operam IA que vocês construíram? Não. Depois de um diagnóstico, colocamos sob monitoramento IA que você já usa — de agente de conversa a automação de processos — e o uso de IA pela sua equipe.
 
 **Contato**
 - Título: Vamos começar pelo diagnóstico.
-- Formulário: nome, empresa, cargo, e-mail corporativo, telefone, "onde a IA entraria" (seleção com os quatro casos de uso), "volume aproximado de conversas por mês" (faixas).
+- Formulário: nome, empresa, cargo, e-mail corporativo, telefone, "onde a IA entraria" (seleção com os seis casos de uso), "volume aproximado de conversas por mês" (faixas).
 - Botão: Enviar pedido de diagnóstico
 - Mensagem após envio: Pedido enviado. Respondemos em até um dia útil.
 - E-mail de contato exibido: [e-mail de domínio próprio — não usar Gmail]
