@@ -1,34 +1,46 @@
-# SENTINELA
+# Sentinella — site
 
-**Auditoria, score e monitoramento contínuo de risco de IA para empresas da América Latina.**
+Site da Sentinella, empresa de IA gerenciada para empresas brasileiras: construímos
+agentes de inteligência artificial para atendimento, vendas, cobrança e triagem — e
+operamos esses agentes com uma central humana das 8h às 22h.
 
-Este repositório é dedicado exclusivamente ao projeto SENTINELA.
+> **Construímos a sua IA. E ficamos operando ela.**
 
-## O que é
+- **`CLAUDE.md`** — o brief completo do site (posicionamento, texto pronto, design,
+  requisitos). É a fonte de verdade: qualquer mudança no site começa por ele.
+- **`PENDENCIAS.md`** — decisões pendentes antes do deploy. Placeholders aparecem no
+  site como "sob consulta" ou "em definição"; nunca inventar valores.
 
-Apólices de E&O e cyber estão excluindo perdas causadas por IA — e as empresas que automatizam com agentes ficam com o risco descoberto. A SENTINELA audita, pontua e monitora sistemas de IA continuamente, construindo o ativo mais valioso desse mercado: **dados proprietários de risco de IA na região**.
+## Stack
 
-Modelo de receita em três fases:
-
-1. **Auditoria de Risco de IA** — avaliação pontual dos sistemas em produção, com relatório e score SENTINELA (US$ 2.500 / auditoria)
-2. **Monitoramento Contínuo** — telemetria de precisão, drift, alucinação e incidentes, com alertas e re-score automático (US$ 500 / mês / sistema)
-3. **Distribuição de Seguro** — parceria de distribuição e underwriting com players globais para a América Latina (comissão + acesso a dados)
-
-## O MVP
-
-`index.html` é um MVP demonstrativo em arquivo único (HTML + CSS + JS, sem dependências), com duas visões:
-
-- **Visão do Investidor** — landing page com problema, modelo de negócio, calculadora interativa de exposição a risco de IA, validação do mercado global e roadmap em 3 fases
-- **Demo da Plataforma** — dashboard de um cliente fictício ("Fintech Aurora") com telemetria ao vivo, score com gauge animado, gráficos de precisão e alertas com filtro de período (7/30/90 dias), tabela de sistemas de IA com sparklines, feed de incidentes em tempo real e status de compliance (LGPD, EU AI Act, SUSEP/BACEN, ISO/IEC 42001)
-
-> ⚠ Todos os dados exibidos são fictícios — ambiente de demonstração.
-
-## Como visualizar
-
-Basta abrir o `index.html` em qualquer navegador — não precisa de servidor, build nem internet.
+[Astro](https://astro.build) + Tailwind CSS, site estático, sem backend próprio.
 
 ```bash
-# ou, se preferir servir localmente:
-python3 -m http.server 8000
-# e abrir http://localhost:8000
+npm install     # instalar dependências
+npm run dev     # desenvolvimento (http://localhost:4321)
+npm run build   # build de produção em dist/
+npm run preview # servir o build localmente
 ```
+
+## Estrutura
+
+```
+src/
+  layouts/Base.astro          # head, SEO, fontes, header e footer
+  components/                 # painel simulado do hero, fluxo de exceção,
+                              # tabela de SLA, formulário de contato
+  pages/
+    index.astro               # página principal
+    como-operamos.astro       # quadro operacional completo
+    piloto.astro              # projeto-piloto
+    privacidade.astro         # política de privacidade (preliminar)
+    termos.astro              # stub — em definição
+  styles/global.css           # tokens de design e componentes
+assets/                       # logo (escudo com olho) em SVG
+legado/                       # MVP single-file anterior, mantido como histórico
+```
+
+## Deploy
+
+Plataforma em definição (Cloudflare Pages ou Vercel — ver `PENDENCIAS.md`).
+Comando de build: `npm run build` · diretório de saída: `dist/`.

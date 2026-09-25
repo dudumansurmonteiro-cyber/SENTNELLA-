@@ -1,0 +1,131 @@
+---
+// Formulário de contato (CLAUDE.md, seção 5). Ferramenta de envio pendente
+// (ver PENDENCIAS.md): a chave abaixo fica vazia até a decisão; com ela vazia,
+// o formulário avisa que o envio está em configuração em vez de fingir enviar.
+interface Props {
+  origem?: string;
+}
+const { origem = 'principal' } = Astro.props;
+const idForm = `form-${origem}`;
+---
+<form class="formulario" id={idForm} data-origem={origem} novalidate>
+  <div class="campo">
+    <label for={`${idForm}-nome`}>Nome</label>
+    <input id={`${idForm}-nome`} name="nome" type="text" required autocomplete="name" />
+  </div>
+  <div class="campo">
+    <label for={`${idForm}-empresa`}>Empresa</label>
+    <input id={`${idForm}-empresa`} name="empresa" type="text" required autocomplete="organization" />
+  </div>
+  <div class="campo">
+    <label for={`${idForm}-cargo`}>Cargo</label>
+    <input id={`${idForm}-cargo`} name="cargo" type="text" required autocomplete="organization-title" />
+  </div>
+  <div class="campo">
+    <label for={`${idForm}-email`}>E-mail corporativo</label>
+    <input id={`${idForm}-email`} name="email" type="email" required autocomplete="email" />
+  </div>
+  <div class="campo">
+    <label for={`${idForm}-telefone`}>Telefone</label>
+    <input id={`${idForm}-telefone`} name="telefone" type="tel" required autocomplete="tel" />
+  </div>
+  <div class="campo">
+    <label for={`${idForm}-caso`}>Onde a IA entraria</label>
+    <select id={`${idForm}-caso`} name="caso_de_uso" required>
+      <option value="" selected disabled>Escolha uma opção</option>
+      <option>Atendimento e pós-venda</option>
+      <option>Vendas e qualificação</option>
+      <option>Cobrança e negociação</option>
+      <option>Triagem e agendamento</option>
+    </select>
+  </div>
+  <div class="campo">
+    <label for={`${idForm}-volume`}>Volume aproximado de conversas por mês</label>
+    <select id={`${idForm}-volume`} name="volume_mensal" required>
+      <option value="" selected disabled>Escolha uma faixa</option>
+      <option>Até 1.000</option>
+      <option>De 1.000 a 5.000</option>
+      <option>De 5.000 a 20.000</option>
+      <option>Mais de 20.000</option>
+    </select>
+  </div>
+  <div class="honeypot" aria-hidden="true">
+    <label for={`${idForm}-site`}>Deixe este campo vazio</label>
+    <input id={`${idForm}-site`} name="site" type="text" tabindex="-1" autocomplete="off" />
+  </div>
+  <div>
+    <button class="btn" type="submit">Enviar pedido de diagnóstico</button>
+  </div>
+  <p class="form-aviso">Respondemos em até um dia útil, das 8h às 22h.</p>
+  <p class="form-ok" hidden data-resultado="ok">Pedido enviado. Respondemos em até um dia útil.</p>
+  <p class="form-erro" hidden data-resultado="erro"></p>
+</form>
+
+<script>
+  // Chave da ferramenta de formulário — em definição (PENDENCIAS.md).
+  const CHAVE_ENVIO = '';
+  const DESTINO = 'https://api.web3forms.com/submit';
+  const ESPERA_MINIMA_MS = 4000;
+  const INTERVALO_ENTRE_ENVIOS_MS = 60000;
+
+  document.querySelectorAll('form.formulario').forEach((form) => {
+    const abriuEm = Date.now();
+    const ok = form.querySelector('[data-resultado="ok"]');
+    const erro = form.querySelector('[data-resultado="erro"]');
+
+    form.addEventListener('submit', async (evento) => {
+      evento.preventDefault();
+      ok.hidden = true;
+      erro.hidden = true;
+
+      if (!form.reportValidity()) return;
+
+      // anti-spam: honeypot + tempo mínimo + limite entre envios
+      const mel = form.querySelector('input[name="site"]');
+      if (mel && mel.value) return;
+      if (Date.now() - abriuEm < ESPERA_MINIMA_MS) {
+        erro.textContent = 'Envio muito rápido. Confira os campos e tente de novo.';
+        erro.hidden = false;
+        return;
+      }
+      let ultimo = 0;
+      try { ultimo = Number(localStorage.getItem('sentinella-ultimo-envio') || 0); } catch {}
+      if (Date.now() - ultimo < INTERVALO_ENTRE_ENVIOS_MS) {
+        erro.textContent = 'Recebemos o seu pedido há pouco. Aguarde um minuto antes de enviar outro.';
+        erro.hidden = false;
+        return;
+      }
+
+      if (!CHAVE_ENVIO) {
+        erro.textContent = 'O envio do formulário está em configuração. Em breve este canal estará ativo.';
+        erro.hidden = false;
+        return;
+      }
+
+      const dados = new FormData(form);
+      dados.append('access_key', CHAVE_ENVIO);
+      dados.append('subject', `Pedido de diagnóstico — ${form.dataset.origem}`);
+      dados.append('from_name', 'Site Sentinella');
+      dados.delete('site');
+
+      const botao = form.querySelector('button[type="submit"]');
+      botao.disabled = true;
+      try {
+        const resposta = await fetch(DESTINO, { method: 'POST', body: dados });
+        const corpo = await resposta.json();
+        if (corpo.success) {
+          form.querySelectorAll('input, select').forEach((c) => { if (c.name !== 'site') c.value = ''; });
+          ok.hidden = false;
+          try { localStorage.setItem('sentinella-ultimo-envio', String(Date.now())); } catch {}
+        } else {
+          throw new Error(corpo.message || 'falha no envio');
+        }
+      } catch {
+        erro.textContent = 'Não conseguimos enviar agora. Tente de novo em instantes.';
+        erro.hidden = false;
+      } finally {
+        botao.disabled = false;
+      }
+    });
+  });
+</script>
