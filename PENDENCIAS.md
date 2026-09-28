@@ -1,34 +1,51 @@
-# Pendências antes do deploy
+# Pendências — brief v2 (Sentinella Recebíveis)
 
-Decisões abertas do brief (`CLAUDE.md`, seção 9). Enquanto não forem resolvidas, os
-pontos abaixo aparecem no site como "sob consulta" ou "em definição" — nunca com
-valores inventados.
+Decisões abertas do `CLAUDE.md` v2. Enquanto não forem resolvidas, os pontos abaixo
+aparecem nas superfícies do produto como "sob consulta" ou "em definição" — nunca
+com valores inventados.
 
 ## Negócio e jurídico
 
 - [ ] Razão social e CNPJ (rodapé)
-- [ ] Preços dos três planos (Construção, Operação, Operação Plus) — hoje "sob consulta"
-- [ ] Condições do projeto-piloto (desconto e contrapartidas detalhadas)
-- [ ] Teto de responsabilidade contratual — definir com advogado (aparece em /como-operamos)
-- [ ] Política de privacidade e Termos de uso revisados por advogado (/privacidade está em versão preliminar; /termos é página-stub)
-- [ ] Número de integrações incluídas no plano Construção (tabela de planos)
+- [ ] Taxa de sucesso — decidir se entra: 3% sobre valores recuperados com mais de
+      30 dias de atraso, nos planos Avançado e Max (`CLAUDE.md` §4)
+- [ ] Escritório parceiro para a etapa judicial (contrato direto cliente–escritório)
+- [ ] Teto de responsabilidade contratual — definir com advogado
+- [ ] Política de privacidade e DPA (contrato de tratamento de dados) revisados por
+      advogado — /privacidade segue em versão preliminar; /termos é página-stub
+- [ ] Valor-limite de título para ligação do analista (`CLAUDE.md` §5)
+- [ ] Condições do projeto-piloto (primeiro mercado: polo moveleiro de Arapongas-PR)
+- [ ] CENPROT: validar acesso e procuração para protesto eletrônico (com advogado)
 
-## Produto e canais
+## Fornecedores e canais
 
-- [ ] Canais suportados além de WhatsApp, chat do site e e-mail (FAQ "Funciona no WhatsApp?")
-- [ ] Região e fornecedor de hospedagem dos dados (FAQ LGPD e /privacidade)
+- [ ] BSP de WhatsApp: 360dialog, Gupshup, Twilio ou Zenvia
+- [ ] E-mail transacional: Resend ou SES
+- [ ] SMS: Zenvia ou Twilio
+- [ ] Carta com AR: serviço de carta registrada digital
+- [ ] Telefonia do console do analista (softphone com gravação)
 
-## Infraestrutura do site
+## Infraestrutura
 
-- [ ] Domínio próprio — trocar `site` em `astro.config.mjs` e a URL do `public/robots.txt` (hoje: `https://sentinella.pages.dev`, provisório)
-- [ ] E-mail de domínio próprio (contato, /privacidade) — não usar Gmail
-- [ ] Ferramenta de formulário (Web3Forms, Formspree ou Resend) — o código já está pronto para Web3Forms: preencher `CHAVE_ENVIO` em `src/components/FormularioContato.astro`; com a chave vazia, o formulário avisa "envio em configuração"
-- [ ] Plataforma de deploy (Cloudflare Pages ou Vercel)
-- [ ] Analytics com respeito à privacidade (Plausible ou Umami) — nenhum script instalado ainda
+- [ ] Domínio próprio e e-mail de domínio próprio (não usar Gmail)
+- [ ] Deploy das aplicações da Fase 1: Vercel ou Cloudflare
+- [ ] Banco gerenciado (PostgreSQL)
+- [ ] Analytics com respeito à privacidade (Plausible ou Umami)
 - [ ] URL do LinkedIn (rodapé)
+
+## Estado das superfícies
+
+- **Site (Webflow)** — já no posicionamento v2 (Sentinella Recebíveis), publicado em
+  https://eduardos-top-notch-site-488aab.webflow.io . Capturas reais do painel e do
+  portal entram no site quando a Fase 1 existir; renomear o subdomínio é ação manual
+  no painel do Webflow.
+- **Site Astro deste repositório (`src/`)** — ainda no posicionamento v1; será
+  substituído pelo `apps/site` (Next.js) na Fase 1 do v2. A chave `CHAVE_ENVIO`
+  (Web3Forms) do formulário v1 fica sem efeito.
+- **Painel do cliente, portal do lojista e console do analista** — não construídos;
+  são a Fase 1 do `CLAUDE.md` §11.
 
 ## Nota de vocabulário
 
-A tabela de SLA do brief original usava "Cobertura humana"; como a seção 8 do brief
-proíbe a palavra "cobertura" no site (vocabulário de seguro), a linha foi publicada
-como "Acompanhamento humano" e o plano Plus como "atendimento 7 dias".
+O brief proíbe "cobertura" (vocabulário de seguro): onde o assunto é horário da
+central, usar "central humana seg–sex/todos os dias, 8h–22h" ou "acompanhamento".

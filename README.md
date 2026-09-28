@@ -1,55 +1,37 @@
-# Sentinella — site
+# Sentinella Recebíveis
 
-Site da Sentinella, empresa de IA gerenciada para empresas brasileiras: construímos
-agentes de inteligência artificial para atendimento, vendas, cobrança e triagem — e
-operamos esses agentes com uma central humana das 8h às 22h.
+A Sentinella faz a indústria receber o que vendeu a prazo: uma IA cobra e atende os
+lojistas pelo canal que o cliente escolher; uma central humana, das 8h às 22h, cuida
+das exceções e faz as ligações. O cliente acompanha tudo em um painel; o lojista vê
+suas dívidas em um portal próprio.
 
-> **Construímos a sua IA. E ficamos operando ela.**
+> **Sua empresa vendeu. A Sentinella faz você receber.**
 
-- **`CLAUDE.md`** — o brief completo do site (posicionamento, texto pronto, design,
-  requisitos). É a fonte de verdade: qualquer mudança no site começa por ele.
-- **`PENDENCIAS.md`** — decisões pendentes antes do deploy. Placeholders aparecem no
-  site como "sob consulta" ou "em definição"; nunca inventar valores.
+- **`CLAUDE.md`** — o brief v2 completo (produto, régua, planos, painel, portal,
+  console, dados, fases). É a fonte de verdade: qualquer tarefa começa por ele.
+- **`PENDENCIAS.md`** — decisões pendentes; placeholders aparecem como
+  "sob consulta" / "em definição", nunca com valores inventados.
 
-## Stack
+## Superfícies do produto (brief v2, §7)
 
-[Astro](https://astro.build) + Tailwind CSS, site estático, sem backend próprio.
+1. **Site público** — hoje publicado no Webflow:
+   https://eduardos-top-notch-site-488aab.webflow.io
+2. **Painel do cliente** — Fase 1 (a construir)
+3. **Portal do lojista** — Fase 1 (a construir)
+4. **Console do analista** — Fase 1 (a construir)
+
+Stack prevista para as aplicações (brief §11): monorepo Next.js + TypeScript +
+Tailwind, PostgreSQL com Prisma, `apps/site` + `apps/painel` + `apps/portal`.
+
+## Legado v1 neste repositório
+
+`src/` contém o site Astro do posicionamento v1 ("IA gerenciada"), mantido como
+referência até o `apps/site` da Fase 1 substituí-lo:
 
 ```bash
-npm install     # instalar dependências
-npm run dev     # desenvolvimento (http://localhost:4321)
-npm run build   # build de produção em dist/
-npm run preview # servir o build localmente
+npm install     # dependências
+npm run dev     # http://localhost:4321
+npm run build   # build em dist/
 ```
 
-## Estrutura
-
-```
-src/
-  layouts/Base.astro          # head, SEO, fontes, header e footer
-  components/                 # painel simulado do hero, fluxo de exceção,
-                              # tabela de SLA, formulário de contato
-  pages/
-    index.astro               # página principal
-    como-operamos.astro       # quadro operacional completo
-    piloto.astro              # projeto-piloto
-    privacidade.astro         # política de privacidade (preliminar)
-    termos.astro              # stub — em definição
-  styles/global.css           # tokens de design e componentes
-assets/                       # logo (escudo com olho) em SVG
-legado/                       # MVP single-file anterior, mantido como histórico
-```
-
-## Deploy
-
-Plataforma em definição (Cloudflare Pages ou Vercel — ver `PENDENCIAS.md`).
-Comando de build: `npm run build` · diretório de saída: `dist/`.
-
-## Versão espelho no Webflow
-
-O mesmo site (mesmo texto, mesma direção de design, com painel simulado,
-modo escuro e formulários nativos do Webflow) existe também no Webflow,
-publicado em https://eduardos-top-notch-site-488aab.webflow.io — serve de
-prévia navegável enquanto o deploy oficial deste repositório não é conectado.
-Este repositório Astro continua sendo a versão canônica: mudanças começam por
-`CLAUDE.md`, entram aqui e depois são espelhadas no Webflow.
+`legado/` guarda o MVP single-file anterior ao v1.
