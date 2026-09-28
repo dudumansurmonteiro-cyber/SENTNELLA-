@@ -44,3 +44,12 @@ legado/                       # MVP single-file anterior, mantido como históric
 
 Plataforma em definição (Cloudflare Pages ou Vercel — ver `PENDENCIAS.md`).
 Comando de build: `npm run build` · diretório de saída: `dist/`.
+
+## Versão espelho no Webflow
+
+O mesmo site (mesmo texto, mesma direção de design, com painel simulado,
+modo escuro e formulários nativos do Webflow) existe também no Webflow,
+publicado em https://eduardos-top-notch-site-488aab.webflow.io — serve de
+prévia navegável enquanto o deploy oficial deste repositório não é conectado.
+Este repositório Astro continua sendo a versão canônica: mudanças começam por
+`CLAUDE.md`, entram aqui e depois são espelhadas no Webflow.
