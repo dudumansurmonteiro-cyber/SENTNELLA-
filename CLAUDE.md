@@ -169,7 +169,7 @@ O rating nunca é mostrado ao lojista.
 Mesma estrutura do v1, adaptada ao produto de cobrança:
 
 - **Hero.** Título: *Sua empresa vendeu. A Sentinella faz você receber.* Subtítulo: *Cobrança por IA e analistas humanos, das 8h às 22h, no canal que seus lojistas usam — com um painel que mostra cada real que está na rua.* Botão principal: *Pedir diagnóstico da carteira*. Elemento visual: o painel simulado do v1, agora mostrando um título em atraso saindo de "IA" para "analista" e voltando como "acordo fechado".
-- **O problema.** *O financeiro liga para os dez maiores. Os outros trezentos ficam para depois.*
+- **O problema.** Título: *Atenção para a carteira inteira — do maior lojista ao menor, sem exceção.* Texto: *Nenhum financeiro dá conta de ligar para trezentos lojistas, e é assim que os títulos menores viram prejuízo. Na Sentinella, ninguém fica para depois: a IA acompanha e cobra cada lojista, um a um, no canal que ele usa; os analistas fazem as ligações e assumem as exceções, das 8h às 22h. O maior e o menor da carteira recebem o mesmo cuidado.* (Direção definida pelo Eduardo em 28/09: a seção deve mostrar atenção a todos os lojistas do cliente, sem exceção — nunca sugerir que os menores ficam para depois. O literal "100%" segue proibido pela seção 12; a ideia é dita com "todos, sem exceção".)
 - **A régua.** Linha do tempo da seção 3, com os pontos do D−3 ao D+90 e a marcação de onde cada plano termina.
 - **Os três planos.** Tabela comparativa e preços da seção 4.
 - **O painel.** Capturas reais do painel (seção 7.2), não ilustrações.
