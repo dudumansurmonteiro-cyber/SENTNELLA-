@@ -1,0 +1,21 @@
+{
+  "name": "sentinella-fase1",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "seed": "tsx packages/dados/src/seed.ts",
+    "dev:painel": "npm run dev --workspace @sentinella/painel",
+    "dev:portal": "npm run dev --workspace @sentinella/portal",
+    "demo": "npm run seed && concurrently -n painel,portal -c green,cyan \"npm:dev:painel\" \"npm:dev:portal\"",
+    "build": "npm run seed && npm run build --workspace @sentinella/painel && npm run build --workspace @sentinella/portal"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "concurrently": "^9.1.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}

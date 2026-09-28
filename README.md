@@ -14,14 +14,18 @@ suas dívidas em um portal próprio.
 
 ## Superfícies do produto (brief v2, §7)
 
-1. **Site público** — hoje publicado no Webflow:
+1. **Site público** — publicado no Webflow:
    https://eduardos-top-notch-site-488aab.webflow.io
-2. **Painel do cliente** — Fase 1 (a construir)
-3. **Portal do lojista** — Fase 1 (a construir)
-4. **Console do analista** — Fase 1 (a construir)
+2. **Painel do cliente + Console do analista** — Fase 1 entregue em `fase1/`
+   (`apps/painel`, Next.js)
+3. **Portal do lojista** — Fase 1 entregue em `fase1/` (`apps/portal`)
 
-Stack prevista para as aplicações (brief §11): monorepo Next.js + TypeScript +
-Tailwind, PostgreSQL com Prisma, `apps/site` + `apps/painel` + `apps/portal`.
+Demonstração navegável das três superfícies (dados fictícios):
+https://claude.ai/artifact/AZcXJ7wAB4rgmXZAEWoP5v
+
+Para rodar localmente: `cd fase1 && npm install && npm run demo` — ver
+`fase1/README.md` (inclui as decisões registradas da fase, como o seed
+determinístico no lugar do banco até a Fase 2).
 
 ## Legado v1 neste repositório
 

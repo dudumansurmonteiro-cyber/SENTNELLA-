@@ -1,0 +1,104 @@
+@import "tailwindcss";
+
+/* Portal do lojista — mobile-first, tela financeira limpa (§7.3). */
+
+:root {
+  --bg: #f4f6f5;
+  --ink: #14211f;
+  --ink-2: #44534e;
+  --line: #c6cfcb;
+  --line-soft: #dde3e0;
+  --primary: #0e4a45;
+  --on-primary: #f4f6f5;
+  --link: #0e4a45;
+  --panel: #ffffff;
+  --panel-row: #f0f3f1;
+  --signal: #d99a00;
+  --signal-text: #8a6200;
+  --signal-bg: rgba(217, 154, 0, 0.14);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14211f;
+    --ink: #f4f6f5;
+    --ink-2: #a9b8b2;
+    --line: #31413c;
+    --line-soft: #24312d;
+    --link: #7fb3ac;
+    --panel: #182722;
+    --panel-row: #1d2e29;
+    --signal-text: #e0a82d;
+    --signal-bg: rgba(217, 154, 0, 0.16);
+  }
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "IBM Plex Sans", system-ui, sans-serif;
+  font-size: 15.5px;
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+}
+
+h1, h2, h3, .fonte-titulo { font-family: "Bricolage Grotesque", Georgia, sans-serif; letter-spacing: -0.01em; }
+a { color: var(--link); text-underline-offset: 3px; }
+:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; border-radius: 3px; }
+
+.container-m { width: min(560px, 100% - 2rem); margin-inline: auto; }
+
+.cartao {
+  background: var(--panel);
+  border: 1px solid var(--line-soft);
+  border-radius: 10px;
+}
+
+.botao {
+  display: inline-block;
+  font-size: 14.5px;
+  font-weight: 500;
+  padding: 10px 16px;
+  border-radius: 6px;
+  border: 1.5px solid var(--primary);
+  background: var(--primary);
+  color: var(--on-primary);
+  cursor: pointer;
+  text-align: center;
+}
+.botao:hover { filter: brightness(1.12); }
+.botao-sec { background: transparent; color: var(--link); }
+.botao:disabled { opacity: 0.5; }
+
+.campo {
+  font: inherit;
+  color: var(--ink);
+  background: var(--panel);
+  border: 1.5px solid var(--line);
+  border-radius: 6px;
+  padding: 9px 12px;
+  width: 100%;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid var(--line);
+  border-radius: 99px;
+  padding: 1px 10px;
+  font-size: 12.5px;
+  color: var(--ink-2);
+}
+.chip-sinal { border-color: var(--signal); color: var(--signal-text); background: var(--signal-bg); }
+
+.nota {
+  border-left: 3px solid var(--primary);
+  padding: 6px 12px;
+  color: var(--ink-2);
+  font-size: 13px;
+}
+
+.suave { color: var(--ink-2); }
+.sinal-txt { color: var(--signal-text); }
+.num { font-variant-numeric: tabular-nums; }

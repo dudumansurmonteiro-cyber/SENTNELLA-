@@ -42,8 +42,11 @@ com valores inventados.
 - **Site Astro deste repositório (`src/`)** — ainda no posicionamento v1; será
   substituído pelo `apps/site` (Next.js) na Fase 1 do v2. A chave `CHAVE_ENVIO`
   (Web3Forms) do formulário v1 fica sem efeito.
-- **Painel do cliente, portal do lojista e console do analista** — não construídos;
-  são a Fase 1 do `CLAUDE.md` §11.
+- **Painel do cliente, portal do lojista e console do analista** — Fase 1
+  entregue em `fase1/` sobre dados de demonstração, com demo navegável em
+  https://claude.ai/artifact/AZcXJ7wAB4rgmXZAEWoP5v (o link só abre para
+  visitantes depois de compartilhado no menu Share do artifact). Fase 2
+  (régua real: importação, WhatsApp/e-mail/SMS, banco) ainda por fazer.
 
 ## Nota de vocabulário
 
