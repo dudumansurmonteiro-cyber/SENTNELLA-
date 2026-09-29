@@ -3,7 +3,7 @@
 // Visão do coordenador (§7.4): carga por analista, SLA cumprido, incidentes
 // por causa e sugestões de regra pendentes.
 
-import Link from 'next/link';
+import { L } from '../../../lib/raiz';
 import { useEffect, useState } from 'react';
 import type { DadosCliente } from '@sentinella/dados';
 import { pct } from '@sentinella/dados';
@@ -35,7 +35,7 @@ export default function Coordenacao() {
 
   return (
     <>
-      <p className="text-[13px]"><Link href="/console/">← Fila de exceções</Link></p>
+      <p className="text-[13px]"><L para="console/">← Fila de exceções</L></p>
       <h1 className="fonte-titulo mt-1 text-[22px] font-semibold">Visão do coordenador</h1>
 
       <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">

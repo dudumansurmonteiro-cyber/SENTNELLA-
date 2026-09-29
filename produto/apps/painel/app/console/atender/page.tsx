@@ -3,7 +3,7 @@
 // Atendimento de uma exceção (§7.4): conversa inteira, ficha do lojista,
 // títulos, alçada do cliente e as ações do analista na mesma tela.
 
-import Link from 'next/link';
+import { L } from '../../../lib/raiz';
 import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import type { DadosCliente, Mensagem } from '@sentinella/dados';
@@ -37,7 +37,7 @@ function Conteudo() {
   if (!excecao) {
     return (
       <p className="py-8">
-        Exceção não encontrada. <Link href="/console/">Voltar à fila</Link>
+        Exceção não encontrada. <L para="console/">Voltar à fila</L>
       </p>
     );
   }
@@ -52,7 +52,7 @@ function Conteudo() {
 
   return (
     <>
-      <p className="text-[13px]"><Link href="/console/">← Fila de exceções</Link></p>
+      <p className="text-[13px]"><L para="console/">← Fila de exceções</L></p>
       <div className="mt-1 flex flex-wrap items-center gap-3">
         <h1 className="fonte-titulo text-[20px] font-semibold sinal-txt">{excecao.motivo}</h1>
         <span className="suave text-[13px]">
@@ -109,7 +109,7 @@ function Conteudo() {
               {lojista.titulosAbertos} títulos abertos · vencidos {moedaCurta(lojista.valorVencido)}
             </p>
             <p className="mt-1 text-[13px]">
-              <Link href={`/devedores/ficha/?l=${lojista.id}`}>ficha completa no painel</Link>
+              <L para={`devedores/ficha/?l=${lojista.id}`}>ficha completa no painel</L>
             </p>
           </Secao>
 

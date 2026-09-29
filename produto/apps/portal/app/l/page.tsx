@@ -10,13 +10,12 @@
 //    acordo, contestação e pagamento informado ficam persistentes no banco,
 //    e a 2ª via sai como documento imprimível com os encargos do dia.
 
-import Link from 'next/link';
+import { L, raizApp } from '../../lib/raiz';
 import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import type { DadosPortal, EntradaPortal } from '@sentinella/dados';
 import { dataBr, moeda } from '@sentinella/dados';
 
-const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 const MODO_REAL = process.env.NEXT_PUBLIC_MODO === 'real';
 
 type Entrada = EntradaPortal & { industria: EntradaPortal['industria'] & { pixChave?: string | null } };
@@ -56,7 +55,7 @@ function Conteudo() {
         .then((dados) => setEntrada(dados && !dados.erro ? dados : null))
         .catch(() => setEntrada(null));
     } else {
-      fetch(`${BASE}/dados/portal.json`)
+      fetch(`${raizApp()}dados/portal.json`)
         .then((r) => r.json())
         .then((portal: DadosPortal) => setEntrada((portal[token] as Entrada) ?? null))
         .catch(() => setEntrada(null));
@@ -96,7 +95,7 @@ function Conteudo() {
     return (
       <main className="container-m pt-10">
         <p>Link não encontrado ou expirado.</p>
-        <p className="mt-2 text-[14px]"><Link href="/">Voltar ao início</Link></p>
+        <p className="mt-2 text-[14px]"><L para="">Voltar ao início</L></p>
       </main>
     );
   }

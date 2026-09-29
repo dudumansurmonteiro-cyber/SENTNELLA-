@@ -3,14 +3,12 @@
 // Contexto de dados do painel: carrega o índice e o arquivo do cliente
 // selecionado (dados de demonstração gerados pelo seed).
 
-import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { L, raizApp } from './raiz';
 import {
   createContext, useCallback, useContext, useEffect, useMemo, useState,
 } from 'react';
 import type { DadosCliente, IndiceSeed } from '@sentinella/dados';
-
-const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
 interface Ctx {
   indice: IndiceSeed | null;
@@ -38,7 +36,7 @@ export async function carregarTodos(ids: string[]): Promise<DadosCliente[]> {
     ids.map(async (id) => {
       const emCache = cacheClientes.get(id);
       if (emCache) return emCache;
-      const d: DadosCliente = await fetch(`${BASE}/dados/${id}.json`).then((r) => r.json());
+      const d: DadosCliente = await fetch(`${raizApp()}dados/${id}.json`).then((r) => r.json());
       cacheClientes.set(id, d);
       return d;
     }),
@@ -53,7 +51,7 @@ export function Casca({ children }: { children: React.ReactNode }) {
   const rota = usePathname() ?? '/';
 
   useEffect(() => {
-    fetch(`${BASE}/dados/indice.json`)
+    fetch(`${raizApp()}dados/indice.json`)
       .then((r) => r.json())
       .then(setIndice)
       .catch(() => setIndice(null));
@@ -68,7 +66,7 @@ export function Casca({ children }: { children: React.ReactNode }) {
       return;
     }
     setCarregando(true);
-    fetch(`${BASE}/dados/${clienteId}.json`)
+    fetch(`${raizApp()}dados/${clienteId}.json`)
       .then((r) => r.json())
       .then((d: DadosCliente) => {
         cacheClientes.set(clienteId, d);
@@ -92,16 +90,20 @@ export function Casca({ children }: { children: React.ReactNode }) {
 
   const noConsole = rota.includes('/console');
 
+  // O painel pode estar montado em qualquer caminho, então a aba ativa é
+  // detectada pelo segmento da rota, não pelo prefixo.
   const abas = [
-    { href: '/', rotulo: 'Visão geral' },
-    { href: '/devedores/', rotulo: 'Devedores' },
-    { href: '/eficiencia/', rotulo: 'Eficiência' },
-    { href: '/hoje/', rotulo: 'Hoje' },
-    { href: '/config/', rotulo: 'Configurações' },
+    { para: '', chave: '', rotulo: 'Visão geral' },
+    { para: 'devedores/', chave: 'devedores', rotulo: 'Devedores' },
+    { para: 'eficiencia/', chave: 'eficiencia', rotulo: 'Eficiência' },
+    { para: 'hoje/', chave: 'hoje', rotulo: 'Hoje' },
+    { para: 'config/', chave: 'config', rotulo: 'Configurações' },
   ];
 
-  const ativa = (href: string) =>
-    href === '/' ? rota === '/' : rota.startsWith(href.replace(/\/$/, ''));
+  const ativa = (chave: string) =>
+    chave === ''
+      ? !['devedores', 'eficiencia', 'hoje', 'config', 'console'].some((s) => rota.includes(`/${s}`))
+      : rota.includes(`/${chave}`);
 
   return (
     <Contexto.Provider value={valor}>
@@ -134,16 +136,16 @@ export function Casca({ children }: { children: React.ReactNode }) {
             </label>
           )}
           <span className="chip ml-auto">demonstração · dados fictícios</span>
-          <Link href={noConsole ? '/' : '/console/'} className="text-[13px]">
+          <L para={noConsole ? '' : 'console/'} className="text-[13px]">
             {noConsole ? 'ir para o painel do cliente' : 'ir para o console do analista'}
-          </Link>
+          </L>
         </div>
         {!noConsole && (
           <nav aria-label="Seções do painel" className="container-p flex overflow-x-auto">
             {abas.map((a) => (
-              <Link key={a.href} href={a.href} className={`aba ${ativa(a.href) ? 'aba-ativa' : ''}`}>
+              <L key={a.chave} para={a.para} className={`aba ${ativa(a.chave) ? 'aba-ativa' : ''}`}>
                 {a.rotulo}
-              </Link>
+              </L>
             ))}
           </nav>
         )}
@@ -151,8 +153,9 @@ export function Casca({ children }: { children: React.ReactNode }) {
       <main className="container-p pb-16 pt-6">{children}</main>
       <footer style={{ borderTop: '1px solid var(--line-soft)' }}>
         <div className="container-p suave py-4 text-[12.5px]">
-          Fase 1 — demonstração da Sentinella Recebíveis com dados e empresas fictícios. Nenhuma
-          mensagem real é enviada; ações desta demo não persistem.
+          Demonstração da Sentinella Recebíveis com dados e empresas fictícios, gerados pelo
+          motor de régua da Fase 2. Nenhuma mensagem real é enviada; nesta demonstração
+          publicada, as ações não persistem.
         </div>
       </footer>
     </Contexto.Provider>

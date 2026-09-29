@@ -2,7 +2,7 @@
 
 // Visão geral (§7.2a): totais, atraso por faixa, DSO, promessas e Score.
 
-import Link from 'next/link';
+import { L } from '../lib/raiz';
 import { moedaCompacta, moedaCurta, pct } from '@sentinella/dados';
 import { Carregando, useDados } from '../lib/contexto';
 import { visaoGeral, recuperadoPorSemana, dezMaiores, distribuicaoRating } from '../lib/metricas';
@@ -66,7 +66,7 @@ export default function VisaoGeral() {
 
       <Secao
         titulo="Os cinco maiores valores em atraso"
-        acao={<Link href="/devedores/" className="text-[13px]">ver os dez e a lista completa</Link>}
+        acao={<L para="devedores/" className="text-[13px]">ver os dez e a lista completa</L>}
       >
         <div className="overflow-x-auto">
           <table className="tab">
@@ -80,7 +80,7 @@ export default function VisaoGeral() {
               {top.map(({ titulo, lojista }) => (
                 <tr key={titulo.id}>
                   <td>
-                    <Link href={`/devedores/ficha/?l=${lojista.id}`}>{lojista.nome}</Link>
+                    <L para={`devedores/ficha/?l=${lojista.id}`}>{lojista.nome}</L>
                   </td>
                   <td className="num font-medium">{moedaCurta(titulo.valor)}</td>
                   <td className="num">{titulo.diasAtraso}</td>

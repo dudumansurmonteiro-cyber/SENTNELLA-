@@ -3,7 +3,7 @@
 // Ficha do lojista (§7.2b): títulos, contatos, promessas, acordos, exceções
 // e o rating explicado critério a critério (§6 / critério de aceite 3).
 
-import Link from 'next/link';
+import { L } from '../../../lib/raiz';
 import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { dataBr, moeda, moedaCurta } from '@sentinella/dados';
@@ -19,7 +19,7 @@ function Conteudo() {
   if (!lojista) {
     return (
       <p className="py-8">
-        Lojista não encontrado. <Link href="/devedores/">Voltar aos devedores</Link>
+        Lojista não encontrado. <L para="devedores/">Voltar aos devedores</L>
       </p>
     );
   }
@@ -37,7 +37,7 @@ function Conteudo() {
 
   return (
     <>
-      <p className="text-[13px]"><Link href="/devedores/">← Devedores</Link></p>
+      <p className="text-[13px]"><L para="devedores/">← Devedores</L></p>
       <div className="mt-1 flex flex-wrap items-center gap-3">
         <h1 className="fonte-titulo text-[22px] font-semibold">{lojista.nome}</h1>
         <Selo letra={lojista.rating} />

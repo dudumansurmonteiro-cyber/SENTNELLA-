@@ -3,10 +3,8 @@
 // Home do portal: explica o acesso por link e, na demonstração, oferece os
 // três acessos de exemplo do seed.
 
-import Link from 'next/link';
+import { L, raizApp } from '../lib/raiz';
 import { useEffect, useState } from 'react';
-
-const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
 interface Exemplos {
   hoje: string;
@@ -18,7 +16,7 @@ export default function Home() {
   const [token, setToken] = useState('');
 
   useEffect(() => {
-    fetch(`${BASE}/dados/exemplos.json`).then((r) => r.json()).then(setExemplos);
+    fetch(`${raizApp()}dados/exemplos.json`).then((r) => r.json()).then(setExemplos);
   }, []);
 
   return (
@@ -44,7 +42,7 @@ export default function Home() {
         {!exemplos && <p className="suave mt-2 text-[13.5px]">Carregando…</p>}
         {exemplos?.tokensExemplo.map((e) => (
           <p key={e.token} className="border-b py-2 text-[14.5px]" style={{ borderColor: 'var(--line-soft)' }}>
-            <Link href={`/l/?t=${e.token}`}>{e.lojista}</Link>
+            <L para={`l/?t=${e.token}`}>{e.lojista}</L>
             <span className="suave block text-[12.5px]">
               devendo para {e.industria.replace(' (fictícia)', '')}
             </span>
@@ -54,7 +52,7 @@ export default function Home() {
           className="mt-3 flex gap-2"
           onSubmit={(ev) => {
             ev.preventDefault();
-            if (token.trim()) window.location.href = `${BASE}/l/?t=${token.trim()}`;
+            if (token.trim()) window.location.href = `${raizApp()}l/?t=${token.trim()}`;
           }}
         >
           <input

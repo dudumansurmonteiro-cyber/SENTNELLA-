@@ -3,7 +3,7 @@
 // Hoje — operação do dia (§7.2d): o que sai hoje, a fila por status, as
 // exceções abertas e o que depende do cliente.
 
-import Link from 'next/link';
+import { L } from '../../lib/raiz';
 import { useState } from 'react';
 import { dataBr, moedaCurta } from '@sentinella/dados';
 import { Carregando, useDados } from '../../lib/contexto';
@@ -57,7 +57,7 @@ export default function Hoje() {
       <div className="grid gap-4 lg:grid-cols-2">
         <Secao
           titulo={`Exceções abertas agora (${excecoesAbertas.length})`}
-          acao={<Link className="text-[13px]" href="/console/">abrir no console</Link>}
+          acao={<L className="text-[13px]" para="console/">abrir no console</L>}
         >
           {excecoesAbertas.map((e) => {
             const lojista = dados.lojistas.find((l) => l.id === e.lojistaId)!;

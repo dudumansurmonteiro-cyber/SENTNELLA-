@@ -3,7 +3,7 @@
 // Devedores e maiores valores (§7.2b): os dez maiores fixos no topo + lista
 // completa de lojistas com filtros.
 
-import Link from 'next/link';
+import { L } from '../../lib/raiz';
 import { useMemo, useState } from 'react';
 import { moedaCurta } from '@sentinella/dados';
 import { Carregando, useDados } from '../../lib/contexto';
@@ -57,7 +57,7 @@ export default function Devedores() {
               {top.map(({ titulo, lojista }, i) => (
                 <tr key={titulo.id}>
                   <td className="suave">{i + 1}</td>
-                  <td><Link href={`/devedores/ficha/?l=${lojista.id}`}>{lojista.nome}</Link></td>
+                  <td><L para={`devedores/ficha/?l=${lojista.id}`}>{lojista.nome}</L></td>
                   <td className="num text-[15px] font-semibold">{moedaCurta(titulo.valor)}</td>
                   <td className="num">{titulo.diasAtraso}</td>
                   <td><Selo letra={lojista.rating} /></td>
@@ -108,7 +108,7 @@ export default function Devedores() {
             <tbody>
               {lista.slice(0, 60).map((l) => (
                 <tr key={l.id}>
-                  <td><Link href={`/devedores/ficha/?l=${l.id}`}>{l.nome}</Link></td>
+                  <td><L para={`devedores/ficha/?l=${l.id}`}>{l.nome}</L></td>
                   <td className="suave">{l.cidade}</td>
                   <td><Selo letra={l.rating} /></td>
                   <td className="num">{l.titulosAbertos}</td>

@@ -108,6 +108,12 @@ contestações). A demonstração publicada nasce desse ciclo via `exportar:demo
 - **Notificação extrajudicial (D+30)** sai por e-mail com confirmação de
   leitura na Fase 2 (canal previsto no §3); carta com AR e o texto definitivo
   do escritório parceiro entram na Fase 3 (pendência registrada).
+- **A demonstração publicada precisa funcionar montada em qualquer caminho**
+  (o visualizador de artifacts serve os arquivos sob um prefixo próprio):
+  painel e portal calculam a raiz do app em tempo de execução
+  (`apps/*/lib/raiz.tsx` — âncoras comuns no lugar do `next/link`) e
+  `scripts/relativizar.mjs` torna relativos os caminhos absolutos dos assets
+  no HTML exportado antes de publicar.
 - **`apps/site` ainda não existe**: o site público segue no Webflow, por
   decisão de produto.
 - **Ações do painel/console continuam demonstrativas** (aprovar autorização,

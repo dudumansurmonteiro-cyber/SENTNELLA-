@@ -3,7 +3,7 @@
 // Agenda de ligações do dia (§7.4): por cliente, com roteiro do plano e
 // campo de registro (atendida, não atendida, promessa).
 
-import Link from 'next/link';
+import { L } from '../../../lib/raiz';
 import { useEffect, useState } from 'react';
 import type { DadosCliente } from '@sentinella/dados';
 import { dataBr, difDias, moedaCurta } from '@sentinella/dados';
@@ -26,7 +26,7 @@ export default function Ligacoes() {
 
   return (
     <>
-      <p className="text-[13px]"><Link href="/console/">← Fila de exceções</Link></p>
+      <p className="text-[13px]"><L para="console/">← Fila de exceções</L></p>
       <h1 className="fonte-titulo mt-1 text-[22px] font-semibold">
         Agenda de ligações <span className="suave text-[14px] font-normal">· {dataBr(hoje)} e próximos dias</span>
       </h1>

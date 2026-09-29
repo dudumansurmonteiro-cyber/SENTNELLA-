@@ -3,7 +3,7 @@
 // Console do analista (§7.4): fila de exceções com cronômetro do SLA,
 // ordenada por valor e tempo, através dos clientes do analista.
 
-import Link from 'next/link';
+import { L } from '../../lib/raiz';
 import { useEffect, useState } from 'react';
 import type { DadosCliente } from '@sentinella/dados';
 import { cronometro, moedaCurta } from '@sentinella/dados';
@@ -90,9 +90,9 @@ export default function Console() {
                       {e.estado === 'aberta' ? 'aguardando analista' : `${e.assumidaPor} atuando`}
                     </td>
                     <td>
-                      <Link className="botao botao-sec" href={`/console/atender/?e=${e.id}&c=${cliente.id}`}>
+                      <L className="botao botao-sec" para={`console/atender/?e=${e.id}&c=${cliente.id}`}>
                         {e.estado === 'aberta' ? 'assumir' : 'abrir'}
-                      </Link>
+                      </L>
                     </td>
                   </tr>
                 );
@@ -122,8 +122,8 @@ export default function Console() {
       </div>
 
       <p className="mt-4 text-[13.5px]">
-        <Link href="/console/ligacoes/">Agenda de ligações do dia</Link> ·{' '}
-        <Link href="/console/coordenacao/">Visão do coordenador</Link>
+        <L para="console/ligacoes/">Agenda de ligações do dia</L> ·{' '}
+        <L para="console/coordenacao/">Visão do coordenador</L>
       </p>
     </>
   );
