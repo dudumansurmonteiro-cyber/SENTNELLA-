@@ -97,25 +97,35 @@ Regras que o sistema precisa respeitar (não são opcionais):
 | Revisão com o cliente | Mensal | Quinzenal | Semanal |
 | Relatório | Mensal | Mensal + Score Sentinella | Semanal + Score Sentinella |
 
-### Preços (proposta conservadora de lançamento)
+### Preços (proposta de volume — decisão do Eduardo em 29/09)
 
-Preço mensal por faixa de títulos ativos no mês. Piso é o menor valor do plano; teto é o maior. Acima do teto, cobra-se excedente por título.
+Estratégia: preço baixo para ganhar **muitos clientes**, não poucos contratos
+caros. A precificação é deliberadamente pessimista quanto à disposição de
+pagar: o plano deve ser fácil de aprovar pelo financeiro sem virar projeto de
+diretoria. Preço mensal por faixa de títulos ativos no mês. Piso é o menor
+valor do plano; teto é o maior. Acima do teto, cobra-se excedente por título.
 
 | Plano | Piso | Teto | Faixas | Implantação |
 |---|---|---|---|---|
-| Básico | R$ 2.900/mês | R$ 4.500/mês | até 500 títulos → piso; 501 a 1.500 → teto | R$ 6.000 a R$ 10.000 |
-| Avançado | R$ 6.500/mês | R$ 9.500/mês | até 1.500 → piso; 1.501 a 5.000 → teto | R$ 12.000 a R$ 20.000 |
-| Max | R$ 11.000/mês | R$ 15.000/mês | até 5.000 → piso; 5.001 a 10.000 → teto | R$ 20.000 a R$ 30.000 |
+| Básico | R$ 1.490/mês | R$ 2.290/mês | até 500 títulos → piso; 501 a 1.500 → teto | R$ 2.500 a R$ 5.000 |
+| Avançado | R$ 2.990/mês | R$ 4.490/mês | até 1.500 → piso; 1.501 a 5.000 → teto | R$ 5.000 a R$ 9.000 |
+| Max | R$ 4.990/mês | R$ 7.490/mês | até 5.000 → piso; 5.001 a 10.000 → teto | R$ 8.000 a R$ 14.000 |
 
 Regras comuns:
-- Excedente acima do teto: R$ 2,00 por título.
+- Excedente acima do teto: R$ 1,00 por título.
 - Implantação: 50% na assinatura, 50% na entrada em produção. O valor dentro da faixa depende do ERP (conector pronto → piso; ERP novo ou muito customizado → teto).
 - Taxa de sucesso `[decidir: 3% sobre valores recuperados com mais de 30 dias de atraso, nos planos Avançado e Max]`.
 - Custos de terceiros repassados ao custo: tarifas da Meta (WhatsApp), SMS, carta, cartório.
 - Contrato de 12 meses, reajuste anual pelo IPCA.
-- No site, os preços aparecem como "a partir de R$ 2.900/mês" por plano, com a tabela completa abaixo. Não usar "sob consulta" onde há preço.
+- No site, os preços aparecem como "a partir de R$ 1.490/mês" por plano, com a tabela completa abaixo. Não usar "sob consulta" onde há preço.
 
-Nota interna (não vai ao site): o Básico opera com margem fina — com um analista para cinco clientes, impostos e IA, sobra pouco. Ele existe como porta de entrada; a meta comercial é migrar cada cliente Básico para Avançado em até 6 meses, usando o painel como argumento ("veja o que está parado depois do D+15").
+Nota interna (não vai ao site): com preço de volume, o Básico é porta de
+entrada com margem negativa no início — a conta do analista 1:5 (mínimo de
+dois analistas), impostos e IA só fecha com escala. O modelo depende de três
+coisas: volume de clientes por analista acima da premissa inicial (automação
+do console), migração de Básico para Avançado em até 6 meses (o painel é o
+argumento: "veja o que está parado depois do D+15") e a taxa de sucesso, se
+aprovada. Revisitar a tabela quando houver 10 clientes pagantes.
 
 ---
 
