@@ -3,26 +3,36 @@
 // A tela do lojista (§7.3): títulos com multa e juros do contrato, 2ª via,
 // Pix, acordo dentro da alçada, informar pagamento, contestar e falar com
 // pessoa. Nunca mostra rating nem dados de outros lojistas.
+//
+// Dois modos de construção:
+//  - demonstração (padrão): lê o JSON estático e simula as ações localmente;
+//  - real (NEXT_PUBLIC_MODO=real, Fase 2): lê e grava pela API do servidor —
+//    acordo, contestação e pagamento informado ficam persistentes no banco,
+//    e a 2ª via sai como documento imprimível com os encargos do dia.
 
 import Link from 'next/link';
-import { Suspense, useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import type { DadosPortal, EntradaPortal } from '@sentinella/dados';
 import { dataBr, moeda } from '@sentinella/dados';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
+const MODO_REAL = process.env.NEXT_PUBLIC_MODO === 'real';
 
+type Entrada = EntradaPortal & { industria: EntradaPortal['industria'] & { pixChave?: string | null } };
 type Aviso = { tipo: 'ok' | 'sinal'; texto: string } | null;
 
-function Titular({ entrada }: { entrada: EntradaPortal }) {
+function Titular({ entrada }: { entrada: Entrada }) {
+  const ficticia = entrada.industria.nome.includes('(fictícia)');
   return (
     <header className="border-b pb-3" style={{ borderColor: 'var(--line-soft)' }}>
       <p className="fonte-titulo text-[17px] font-semibold">
         {entrada.industria.nome.replace(' (fictícia)', '')}
-        <span className="chip ml-2">demonstração</span>
+        {ficticia && <span className="chip ml-2">demonstração</span>}
       </p>
       <p className="suave text-[13px]">
-        {entrada.lojista.nome} · CNPJ fictício {entrada.lojista.cnpj} · olá, {entrada.lojista.contatoNome.split(' ')[0]}
+        {entrada.lojista.nome} · CNPJ {ficticia ? 'fictício ' : ''}{entrada.lojista.cnpj} · olá,{' '}
+        {entrada.lojista.contatoNome.split(' ')[0]}
       </p>
     </header>
   );
@@ -31,20 +41,57 @@ function Titular({ entrada }: { entrada: EntradaPortal }) {
 function Conteudo() {
   const params = useSearchParams();
   const token = params.get('t') ?? '';
-  const [portal, setPortal] = useState<DadosPortal | null>(null);
+  const [entrada, setEntrada] = useState<Entrada | null | 'carregando'>('carregando');
   const [aviso, setAviso] = useState<Aviso>(null);
   const [propondo, setPropondo] = useState<string | null>(null);
   const [parcelas, setParcelas] = useState(2);
   const [contestando, setContestando] = useState<string | null>(null);
   const [informado, setInformado] = useState<string[]>([]);
+  const [ocupado, setOcupado] = useState(false);
 
-  useEffect(() => {
-    fetch(`${BASE}/dados/portal.json`).then((r) => r.json()).then(setPortal);
-  }, []);
+  const carregar = () => {
+    if (MODO_REAL) {
+      fetch(`/api/portal/${token}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((dados) => setEntrada(dados && !dados.erro ? dados : null))
+        .catch(() => setEntrada(null));
+    } else {
+      fetch(`${BASE}/dados/portal.json`)
+        .then((r) => r.json())
+        .then((portal: DadosPortal) => setEntrada((portal[token] as Entrada) ?? null))
+        .catch(() => setEntrada(null));
+    }
+  };
+  useEffect(carregar, [token]);
 
-  const entrada = useMemo(() => portal?.[token], [portal, token]);
+  // No modo real, toda ação vai à API e o resultado volta do servidor.
+  const agir = async (acao: string, corpo: Record<string, unknown>, aoVivo?: () => void) => {
+    if (!MODO_REAL) return null;
+    setOcupado(true);
+    try {
+      const r = await fetch(`/api/portal/${token}/${acao}`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(corpo),
+      });
+      const dados = await r.json();
+      if (!r.ok) {
+        setAviso({ tipo: 'sinal', texto: dados.erro ?? 'Não foi possível concluir agora.' });
+        return null;
+      }
+      aoVivo?.();
+      carregar();
+      return dados as { aprovado?: boolean; mensagem: string };
+    } catch {
+      setAviso({ tipo: 'sinal', texto: 'Falha de conexão — tente de novo em instantes.' });
+      return null;
+    } finally {
+      setOcupado(false);
+    }
+  };
 
-  if (!portal) return <main className="container-m pt-10 suave">Carregando…</main>;
+  if (entrada === 'carregando')
+    return <main className="container-m pt-10 suave">Carregando…</main>;
   if (!entrada) {
     return (
       <main className="container-m pt-10">
@@ -58,8 +105,11 @@ function Conteudo() {
   const totalDevido = entrada.titulosAbertos.reduce((s, t) => s + t.total, 0);
   const vencidos = entrada.titulosAbertos.filter((t) => t.diasAtraso > 0);
 
-  const proporAcordo = (numero: string) => {
-    if (parcelas <= alcada.parcelasMax) {
+  const proporAcordo = async (numero: string) => {
+    if (MODO_REAL) {
+      const r = await agir('acordo', { numero, parcelas });
+      if (r) setAviso({ tipo: r.aprovado ? 'ok' : 'sinal', texto: r.mensagem });
+    } else if (parcelas <= alcada.parcelasMax) {
       setAviso({
         tipo: 'ok',
         texto: `Acordo do título ${numero} em ${parcelas}x aprovado na hora — está dentro da alçada combinada com a indústria. O boleto da 1ª parcela chegaria agora no seu WhatsApp.`,
@@ -71,6 +121,65 @@ function Conteudo() {
       });
     }
     setPropondo(null);
+  };
+
+  const segundaVia = (numero: string) => {
+    if (MODO_REAL) {
+      window.open(`/api/portal/${token}/segunda-via?numero=${encodeURIComponent(numero)}`, '_blank');
+    } else {
+      setAviso({ tipo: 'ok', texto: `2ª via do título ${numero} gerada — na versão real, o documento com os encargos do dia abre na hora.` });
+    }
+  };
+
+  const copiarPix = (numero: string) => {
+    const chave = entrada.industria.pixChave;
+    if (MODO_REAL && !chave) {
+      setAviso({ tipo: 'sinal', texto: 'A indústria ainda não cadastrou a chave Pix — use a 2ª via ou fale com uma pessoa.' });
+      return;
+    }
+    const conteudo = MODO_REAL && chave ? chave : `pix-demonstracao-${numero}`;
+    try { navigator.clipboard?.writeText(conteudo); } catch {}
+    setAviso({
+      tipo: 'ok',
+      texto: MODO_REAL && chave
+        ? `Chave Pix da indústria copiada para o título ${numero}.`
+        : `Código Pix do título ${numero} copiado (demonstração).`,
+    });
+  };
+
+  const jaPaguei = async (numero: string) => {
+    if (MODO_REAL) {
+      const r = await agir('pagamento', { numero });
+      if (r) {
+        setInformado((x) => [...x, numero]);
+        setAviso({ tipo: 'ok', texto: r.mensagem });
+      }
+    } else {
+      setInformado((x) => [...x, numero]);
+      setAviso({ tipo: 'ok', texto: `Pagamento informado para ${numero}. Anexe o comprovante na versão real — a cobrança pausa até a conferência.` });
+    }
+  };
+
+  const contestar = async (numero: string, motivo: string) => {
+    setContestando(null);
+    if (MODO_REAL) {
+      const r = await agir('contestacao', { numero, motivo });
+      if (r) setAviso({ tipo: 'sinal', texto: r.mensagem });
+    } else {
+      setAviso({
+        tipo: 'sinal',
+        texto: `Contestação registrada (“${motivo}”). O título ${numero} foi marcado como contestado, o representante comercial foi avisado e um analista acompanha o caso.`,
+      });
+    }
+  };
+
+  const falarComPessoa = async () => {
+    if (MODO_REAL) {
+      const r = await agir('pessoa', {});
+      if (r) setAviso({ tipo: 'ok', texto: r.mensagem });
+    } else {
+      setAviso({ tipo: 'ok', texto: 'Pedido registrado: uma pessoa da central assume esta conversa. Atendimento humano das 8h às 22h.' });
+    }
   };
 
   return (
@@ -112,43 +221,34 @@ function Conteudo() {
             <p className="suave text-[12.5px]">valor original {moeda(t.valor)}</p>
           )}
           {t.estado === 'acordo' && <p className="chip mt-1">este título está em acordo</p>}
+          {t.estado === 'contestado' && <p className="chip chip-sinal mt-1">em análise — contestado</p>}
 
           <div className="mt-3 flex flex-wrap gap-2">
-            <button
-              className="botao"
-              onClick={() =>
-                setAviso({ tipo: 'ok', texto: `2ª via do título ${t.numero} gerada — na versão real, o boleto atualizado baixa na hora.` })
-              }
-            >
-              2ª via do boleto
+            <button className="botao" disabled={ocupado} onClick={() => segundaVia(t.numero)}>
+              2ª via {MODO_REAL ? 'com encargos do dia' : 'do boleto'}
             </button>
-            <button
-              className="botao botao-sec"
-              onClick={() => {
-                try { navigator.clipboard?.writeText(`pix-demonstracao-${t.numero}`); } catch {}
-                setAviso({ tipo: 'ok', texto: `Código Pix do título ${t.numero} copiado (demonstração).` });
-              }}
-            >
+            <button className="botao botao-sec" disabled={ocupado} onClick={() => copiarPix(t.numero)}>
               copiar Pix
             </button>
-            {t.diasAtraso > 0 && t.estado !== 'acordo' && (
-              <button className="botao botao-sec" onClick={() => { setPropondo(t.numero); setAviso(null); }}>
+            {t.diasAtraso > 0 && !['acordo', 'contestado'].includes(t.estado) && (
+              <button className="botao botao-sec" disabled={ocupado} onClick={() => { setPropondo(t.numero); setAviso(null); }}>
                 propor acordo
               </button>
             )}
-            <button
-              className="botao botao-sec"
-              disabled={informado.includes(t.numero)}
-              onClick={() => {
-                setInformado((x) => [...x, t.numero]);
-                setAviso({ tipo: 'ok', texto: `Pagamento informado para ${t.numero}. Anexe o comprovante na versão real — a cobrança pausa até a conferência.` });
-              }}
-            >
-              {informado.includes(t.numero) ? 'pagamento informado' : 'já paguei'}
-            </button>
-            <button className="botao botao-sec" onClick={() => { setContestando(t.numero); setAviso(null); }}>
-              contestar
-            </button>
+            {t.estado !== 'contestado' && (
+              <button
+                className="botao botao-sec"
+                disabled={ocupado || informado.includes(t.numero)}
+                onClick={() => jaPaguei(t.numero)}
+              >
+                {informado.includes(t.numero) ? 'pagamento informado' : 'já paguei'}
+              </button>
+            )}
+            {t.estado !== 'contestado' && (
+              <button className="botao botao-sec" disabled={ocupado} onClick={() => { setContestando(t.numero); setAviso(null); }}>
+                contestar
+              </button>
+            )}
           </div>
 
           {propondo === t.numero && (
@@ -164,7 +264,7 @@ function Conteudo() {
                 </select>
               </label>
               <div className="mt-2 flex gap-2">
-                <button className="botao" onClick={() => proporAcordo(t.numero)}>enviar proposta</button>
+                <button className="botao" disabled={ocupado} onClick={() => proporAcordo(t.numero)}>enviar proposta</button>
                 <button className="botao botao-sec" onClick={() => setPropondo(null)}>cancelar</button>
               </div>
             </div>
@@ -174,17 +274,7 @@ function Conteudo() {
             <div className="mt-3 rounded-lg p-3" style={{ background: 'var(--panel-row)' }}>
               <p className="text-[14px] font-medium">O que aconteceu?</p>
               {['Entrega incompleta ou errada', 'Produto com defeito', 'Valor diferente do combinado'].map((m) => (
-                <button
-                  key={m}
-                  className="botao botao-sec mr-2 mt-2"
-                  onClick={() => {
-                    setContestando(null);
-                    setAviso({
-                      tipo: 'sinal',
-                      texto: `Contestação registrada (“${m}”). O título ${t.numero} foi marcado como contestado, o representante comercial foi avisado e um analista acompanha o caso.`,
-                    });
-                  }}
-                >
+                <button key={m} className="botao botao-sec mr-2 mt-2" disabled={ocupado} onClick={() => contestar(t.numero, m)}>
                   {m}
                 </button>
               ))}
@@ -216,12 +306,7 @@ function Conteudo() {
         </>
       )}
 
-      <button
-        className="botao mt-6 w-full"
-        onClick={() =>
-          setAviso({ tipo: 'ok', texto: 'Pedido registrado: uma pessoa da central assume esta conversa. Atendimento humano das 8h às 22h.' })
-        }
-      >
+      <button className="botao mt-6 w-full" disabled={ocupado} onClick={falarComPessoa}>
         Falar com uma pessoa
       </button>
     </main>

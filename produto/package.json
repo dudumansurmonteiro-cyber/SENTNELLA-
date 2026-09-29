@@ -1,0 +1,36 @@
+{
+  "name": "sentinella-produto",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "seed": "tsx packages/dados/src/seed.ts",
+    "dev:painel": "npm run dev --workspace @sentinella/painel",
+    "dev:portal": "npm run dev --workspace @sentinella/portal",
+    "demo": "npm run seed && concurrently -n painel,portal -c green,cyan \"npm:dev:painel\" \"npm:dev:portal\"",
+    "build": "npm run seed && npm run build --workspace @sentinella/painel && npm run build --workspace @sentinella/portal",
+    "banco": "bash scripts/banco-local.sh",
+    "db:migrar": "prisma migrate dev --schema packages/db/prisma/schema.prisma",
+    "db:gerar": "prisma generate --schema packages/db/prisma/schema.prisma",
+    "gerar:planilhas": "tsx packages/motor/src/cli.ts gerar-planilhas",
+    "importar": "tsx packages/motor/src/cli.ts importar",
+    "baixa": "tsx packages/motor/src/cli.ts baixa",
+    "regua:tick": "tsx packages/motor/src/cli.ts tick",
+    "regua:simular": "tsx packages/motor/src/cli.ts simular",
+    "rating:recalcular": "tsx packages/motor/src/cli.ts rating",
+    "exportar:demo": "tsx packages/motor/src/cli.ts exportar",
+    "verificar": "node --import tsx --test packages/motor/testes/*.test.ts",
+    "servidor": "npm run dev --workspace @sentinella/servidor",
+    "build:real": "npm run exportar:demo && NEXT_PUBLIC_MODO=real npm run build --workspace @sentinella/portal && NEXT_PUBLIC_BASE_PATH=/painel npm run build --workspace @sentinella/painel",
+    "operacao": "npm run build:real && npm run servidor"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "concurrently": "^9.1.0",
+    "prisma": "^6.2.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}

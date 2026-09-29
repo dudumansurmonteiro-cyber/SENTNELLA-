@@ -16,16 +16,19 @@ suas dívidas em um portal próprio.
 
 1. **Site público** — publicado no Webflow:
    https://eduardos-top-notch-site-488aab.webflow.io
-2. **Painel do cliente + Console do analista** — Fase 1 entregue em `fase1/`
-   (`apps/painel`, Next.js)
-3. **Portal do lojista** — Fase 1 entregue em `fase1/` (`apps/portal`)
+2. **Painel do cliente + Console do analista** — em `produto/` (`apps/painel`,
+   Next.js)
+3. **Portal do lojista** — em `produto/` (`apps/portal`); na Fase 2, com API
+   persistente (acordo, 2ª via, contestação)
 
-Demonstração navegável das três superfícies (dados fictícios):
-https://claude.ai/artifact/AZcXJ7wAB4rgmXZAEWoP5v
+**Fase 1** (telas sobre dados de demonstração) e **Fase 2** (régua real:
+importação por planilha, motor com fila e conferência, baixa de pagamentos,
+portal transacional sobre PostgreSQL) estão entregues em `produto/` — ver
+`produto/README.md` para rodar cada modo. Canais de mensagem operam em modo
+simulado até os fornecedores serem definidos (`PENDENCIAS.md`).
 
-Para rodar localmente: `cd fase1 && npm install && npm run demo` — ver
-`fase1/README.md` (inclui as decisões registradas da fase, como o seed
-determinístico no lugar do banco até a Fase 2).
+Demonstração navegável das três superfícies (dados fictícios, gerados pelo
+motor real da Fase 2): https://claude.ai/artifact/AZcXJ7wAB4rgmXZAEWoP5v
 
 ## Legado v1 neste repositório
 

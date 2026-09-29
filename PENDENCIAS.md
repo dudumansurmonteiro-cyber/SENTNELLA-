@@ -16,6 +16,9 @@ com valores inventados.
 - [ ] Valor-limite de título para ligação do analista (`CLAUDE.md` §5)
 - [ ] Condições do projeto-piloto (primeiro mercado: polo moveleiro de Arapongas-PR)
 - [ ] CENPROT: validar acesso e procuração para protesto eletrônico (com advogado)
+- [ ] Texto definitivo da notificação extrajudicial (D+30): modelo redigido pelo
+      escritório parceiro (`CLAUDE.md` §3) — a Fase 2 usa um texto provisório
+      sóbrio por e-mail, marcado no código (`packages/motor/src/mensagens.ts`)
 
 ## Fornecedores e canais
 
@@ -24,6 +27,15 @@ com valores inventados.
 - [ ] SMS: Zenvia ou Twilio
 - [ ] Carta com AR: serviço de carta registrada digital
 - [ ] Telefonia do console do analista (softphone com gravação)
+
+Enquanto não houver fornecedor + credenciais, os drivers da Fase 2
+(`packages/motor/src/drivers.ts`) mantêm todo envio em modo simulado, mesmo
+com `CANAIS_MODO=producao` — o motivo aparece no resumo do tick.
+
+- [ ] Chave Pix de recebimento por cliente (campo `pixChave` no cadastro): sem
+      ela, o portal e a 2ª via dizem "não cadastrada — em definição"
+- [ ] Emissão de boleto / linha digitável: sai do banco emissor do cliente —
+      integração bancária na Fase 3 (a 2ª via da Fase 2 informa isso)
 
 ## Infraestrutura
 
@@ -42,11 +54,14 @@ com valores inventados.
 - **Site Astro deste repositório (`src/`)** — ainda no posicionamento v1; será
   substituído pelo `apps/site` (Next.js) na Fase 1 do v2. A chave `CHAVE_ENVIO`
   (Web3Forms) do formulário v1 fica sem efeito.
-- **Painel do cliente, portal do lojista e console do analista** — Fase 1
-  entregue em `fase1/` sobre dados de demonstração, com demo navegável em
+- **Painel do cliente, portal do lojista e console do analista** — Fases 1 e 2
+  entregues em `produto/`: telas navegáveis + motor de régua real sobre
+  PostgreSQL (importação por planilha, fila com conferência pré-envio, baixa
+  de pagamentos, portal transacional). Demo navegável em
   https://claude.ai/artifact/AZcXJ7wAB4rgmXZAEWoP5v (o link só abre para
-  visitantes depois de compartilhado no menu Share do artifact). Fase 2
-  (régua real: importação, WhatsApp/e-mail/SMS, banco) ainda por fazer.
+  visitantes depois de compartilhado no menu Share do artifact). Fase 3
+  (conector de ERP, ligações com gravação, carta AR, fluxo de autorização no
+  painel, relatório PDF, régua editável do Max) por fazer.
 
 ## Nota de vocabulário
 

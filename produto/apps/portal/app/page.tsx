@@ -36,7 +36,7 @@ export default function Home() {
       </h1>
       <p className="suave mt-2">
         O acesso chega por um link protegido no seu WhatsApp ou e-mail, enviado pela indústria —
-        sem senha para decorar. Esta é a demonstração da Fase 1, com dados fictícios.
+        sem senha para decorar. Nesta demonstração, todos os dados são fictícios.
       </p>
 
       <div className="cartao mt-6 p-4">
