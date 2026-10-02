@@ -1,21 +1,31 @@
-// Tipos do domínio da Fase 1 (CLAUDE.md §8) — estados sempre em pt-BR.
+// Tipos do domínio v3 (CLAUDE.md §4, §6 e §7) — estados sempre em pt-BR.
+// Hierarquia: Escritório (tenant) → Credor → Carteira → Devedor → Título.
 
 export type Plano = 'Básico' | 'Avançado' | 'Max';
 export type Canal = 'WhatsApp' | 'SMS' | 'e-mail' | 'carta' | 'ligação';
 export type Letra = 'A' | 'B' | 'C' | 'D' | 'E';
+export type TipoDevedor = 'PF' | 'PJ';
+export type TipoCarteira =
+  | 'educação' | 'saúde' | 'condomínio' | 'varejo' | 'financeiro' | 'indústria';
+
+// Faixa de atraso do título NO MOMENTO em que entrou na carteira (§4).
+export type FaixaEntrada = 'até 30' | '31–90' | '91–180' | 'acima de 180';
+
+// Etapas da régua reancorada na entrada (E = dias desde a entrada).
+export type Etapa =
+  | 'E+0' | 'E+2' | 'E+3' | 'E+5' | 'E+7' | 'E+10'
+  | 'E+15' | 'E+20' | 'E+30' | 'E+45' | 'E+60';
 
 export type EstadoTitulo =
-  | 'a vencer'
-  | 'vencido'
+  | 'em cobrança'
   | 'em negociação'
   | 'acordo'
   | 'pago'
-  | 'protestado'
   | 'negativado'
-  | 'jurídico'
+  | 'protestado'
+  | 'judicial'
   | 'contestado'
-  | 'cancelado'
-  | 'fora da régua';
+  | 'cancelado';
 
 export type EstadoAcao =
   | 'agendada'
@@ -26,215 +36,387 @@ export type EstadoAcao =
   | 'cancelada'
   | 'bloqueada';
 
-export type EstadoExcecao = 'aberta' | 'em atendimento' | 'resolvida' | 'devolvida ao cliente';
+export type EstadoExcecao = 'aberta' | 'em atendimento' | 'resolvida' | 'devolvida ao escritório';
 
-export type Etapa =
-  | 'D−3'
-  | 'D0'
-  | 'D+3'
-  | 'D+7'
-  | 'D+10'
-  | 'D+15'
-  | 'bloqueio'
-  | 'D+30'
-  | 'D+45'
-  | 'jurídico';
+export interface Marca {
+  nomeExibicao: string; // o que aparece para credor e devedor
+  iniciais: string;
+  corPrimaria: string; // cor de marca do escritório (base neutra + 2 cores — §9)
+  corClara: string; // variação para o modo escuro
+  mostrarOperadora: boolean; // "plataforma operada por Sentinella" no rodapé (removível no Max)
+}
+
+export interface UsuarioEscritorio {
+  nome: string;
+  papel: 'sócio' | 'advogado' | 'coordenador' | 'negociador' | 'financeiro';
+  oab?: string; // fictícia no seed (padrão 00.000)
+}
+
+export interface Escritorio {
+  id: string;
+  nome: string; // sempre marcado como fictício no seed
+  oab: string; // registro fictício
+  cidade: string;
+  plano: Plano;
+  marca: Marca;
+  slaMin: number | null; // null no Básico (equipe do próprio escritório opera)
+  usuarios: UsuarioEscritorio[];
+  retencaoGravacoesAnos: number;
+}
+
+export interface Credor {
+  id: string;
+  escritorioId: string;
+  nome: string;
+  setor: TipoCarteira;
+  contatoNome: string;
+  honorariosPct: number; // regra informativa cadastrada pelo escritório (§6.2)
+  token: string; // acesso do portal do credor
+}
 
 export interface Alcada {
   descontoMaxPct: number;
   parcelasMax: number;
   prazoMaxDias: number;
-  valorSempreAnalista: number;
+  entradaMinPct: number;
 }
 
-export interface Cliente {
+export interface Carteira {
   id: string;
-  nome: string; // sempre marcado como fictícia no seed
-  plano: Plano;
-  cidade: string;
-  setor: string;
-  erp: string;
-  erpIntegrado: boolean; // bloqueio de pedidos só com ERP integrado (§3)
+  escritorioId: string;
+  credorId: string;
+  nome: string;
+  tipo: TipoCarteira;
+  devedores: TipoDevedor | 'PF e PJ';
+  alcada: Alcada;
   canais: Canal[];
-  // §12: multa e juros só a partir do cadastro do cliente; sem cadastro, a
-  // mensagem e o portal não mencionam multa.
+  // §12 do v2 continua: encargos só a partir do cadastro da carteira.
   multaPct: number | null;
   jurosMesPct: number | null;
-  alcada: Alcada;
-  valorLimiteLigacao: number;
-  analistaIds: string[];
-  analistaNomeado?: string; // Max: analista de referência
+  baseLegal: 'execução de contrato' | 'legítimo interesse do credor';
+  controlador: 'credor' | 'credor e escritório';
+  contaEmissora: 'conta do credor' | 'conta do escritório';
+  entradaEm: string; // primeira remessa (AAAA-MM-DD)
 }
 
 export interface DetalheCriterio {
   rotulo: string;
-  peso: number; // %
-  valor: string; // valor medido, formatado
-  pontos: number; // 0–100 no critério
+  peso: number;
+  valor: string;
+  pontos: number;
 }
 
-export interface Lojista {
+export interface Devedor {
   id: string;
-  clienteId: string;
+  escritorioId: string;
+  credorId: string;
+  carteiraId: string;
+  tipo: TipoDevedor;
   nome: string;
+  doc: string; // CPF/CNPJ fictício (prefixo 000.000 / 00.000 — nunca real)
   cidade: string;
-  cnpj: string; // fictício, prefixo 00.000 (nunca CNPJ real — §11)
-  contatoNome: string;
-  contatoPapel: 'financeiro' | 'sócio';
-  token: string; // acesso do portal por link protegido
+  // Contatos do próprio devedor — nunca de terceiros (§3).
+  canaisBloqueados: Canal[]; // pedido de não contato por canal
+  vulneravel: boolean; // declarou vulnerabilidade → atenção especial (Lei 14.181)
   rating: Letra;
-  ratingTotal: number; // 0–100
-  ratingDetalhe: DetalheCriterio[];
-  ratingNovo: boolean; // menos de 3 títulos de histórico → C (§6)
+  ratingTotal: number;
+  // Entradas compactas do cálculo (§6): [títulos, diasMédiosAtraso×10,
+  // horasResposta (−1 = não responde), promessasFeitas, promessasCumpridas,
+  // %títulosComAtraso, exceçõesPorTítulo×100]. A ficha reconstrói a
+  // explicação com calcularRating — evita 6.000 detalhamentos no JSON.
+  ratingBase: number[];
+  ratingNovo: boolean;
   titulosAbertos: number;
-  valorAberto: number;
-  valorVencido: number;
-  maiorAtrasoDias: number;
+  valorAberto: number; // valor atualizado em aberto
+  diasDesdeEntrada: number; // do título mais antigo em aberto
+  maiorAtrasoTotal: number; // atraso original + tempo na carteira (do pior título)
+  token?: string; // acesso do portal do devedor (só os exemplos do seed)
 }
+
+// Trilha compacta de contatos de um título: "etapa|data|canal|resultado".
+// Canais: w=WhatsApp s=SMS m=e-mail c=carta l=ligação. Resultados: ver
+// TRILHA em formato.ts. Mantém o JSON pequeno com 20.000 títulos.
+export type PassoTrilha = string;
 
 export interface Titulo {
   id: string;
-  clienteId: string;
-  lojistaId: string;
+  escritorioId: string;
+  credorId: string;
+  carteiraId: string;
+  devedorId: string;
   numero: string;
-  valor: number;
-  emissao: string; // AAAA-MM-DD
-  vencimento: string;
-  antecipado: boolean; // Lei 5.474/68: notificação D+15, protesto até D+25
+  valorOriginal: number;
+  valorAtualizado: number; // com encargos da carteira (ou = original, sem cadastro)
+  vencimentoOriginal: string;
+  entradaCarteira: string;
+  atrasoOriginal: number; // dias de atraso quando entrou
+  faixaEntrada: FaixaEntrada;
+  antecipado: boolean; // só PJ — regra do v2 (protesto até 30 dias do vencimento)
   estado: EstadoTitulo;
-  diasAtraso: number; // em relação a "hoje" do seed (0 se não vencido/pago em dia)
   pagoEm: string | null;
-  etapaAtual: string; // rótulo curto da última/próxima etapa da régua
+  contestadoEm: string | null;
+  comunicacaoPreviaEm: string | null; // CDC art. 43 §2º — antes de negativar
+  etapaAtual: string;
+  trilha: PassoTrilha[];
 }
 
 export interface Acao {
   id: string;
-  clienteId: string;
+  escritorioId: string;
+  credorId: string;
+  carteiraId: string;
+  devedorId: string;
   tituloId: string;
-  lojistaId: string;
   etapa: Etapa;
   descricao: string;
   canal: Canal;
   quem: 'IA' | 'analista' | 'sistema';
   data: string;
   estado: EstadoAcao;
-  resultado: string | null; // entregue · lido · respondido · atendida · promessa…
+  resultado: string | null;
+  motivoBloqueio: string | null; // travas da seção 3, visíveis (aceite §12.6)
 }
 
 export interface Mensagem {
-  de: 'IA' | 'lojista' | 'analista';
+  de: 'IA' | 'devedor' | 'analista';
   texto: string;
   minAtras: number;
 }
 
 export interface Excecao {
   id: string;
-  clienteId: string;
-  lojistaId: string;
+  escritorioId: string;
+  carteiraId: string;
+  devedorId: string;
   tituloId: string | null;
   motivo: string;
   estado: EstadoExcecao;
   abertaMinAtras: number;
-  slaMin: number; // 15 (Básico/Avançado) ou 5 (Max)
+  slaMin: number | null; // null = equipe do escritório (Básico)
   valorEnvolvido: number;
   assumidaPor: string | null;
   tempoAteAssumirMin: number | null;
   causa: string | null;
   resolucao: string | null;
-  regraSugerida: string | null;
   conversa: Mensagem[];
 }
 
 export interface Acordo {
   id: string;
-  clienteId: string;
-  lojistaId: string;
+  escritorioId: string;
+  carteiraId: string;
+  devedorId: string;
   tituloIds: string[];
-  valorTotal: number;
+  valorTotal: number; // custo total mostrado antes do aceite (Lei 14.181)
+  jurosEmbutidos: number;
   parcelas: number;
   parcelasPagas: number;
   status: 'em dia' | 'atrasado' | 'quitado';
+  origem: 'portal' | 'analista';
   criadoEm: string;
 }
 
-export interface Autorizacao {
+export type TipoDocumento =
+  | 'comunicação prévia' | 'notificação extrajudicial' | 'autorização' | 'dossiê judicial';
+
+export interface DocumentoJuridico {
   id: string;
-  clienteId: string;
-  lojistaId: string;
-  tituloId: string;
-  tipo: 'protesto' | 'negativação' | 'bloqueio de pedidos';
+  escritorioId: string;
+  carteiraId: string;
+  tituloIds: string[];
+  devedorId: string;
+  tipo: TipoDocumento;
+  subtipo?: 'protesto' | 'negativação';
+  status: 'a assinar' | 'aguarda autorização' | 'assinado' | 'enviado com prova' | 'pronto';
   valor: number;
-  pedidoEm: string;
-  status: 'pendente' | 'aprovada';
-  aprovadaEm: string | null;
+  geradoEm: string;
+  assinadoPor: string | null; // "Dra. Fulana — OAB fictícia"
 }
 
-export interface Promessa {
+export interface HonorariosCredor {
+  credorId: string;
+  recuperadoMes: number;
+  pct: number;
+  valor: number;
+}
+
+export interface SerieSemana {
+  rotulo: string;
+  valor: number;
+}
+
+export interface EficienciaCanal {
+  canal: Canal;
+  enviadas: number;
+  entregues: number;
+  lidas: number;
+  respondidas: number;
+  pagas48h: number;
+}
+
+export interface EficienciaEtapa {
+  etapa: Etapa;
+  acoes: number;
+  pagos48h: number;
+  conversao: number; // %
+}
+
+export interface LigacoesResumo {
+  realizadas: number;
+  atendidas: number;
+  naoAtendidas: number;
+  promessasObtidas: number;
+  promessasCumpridas: number;
+  pagasEm7d: number;
+}
+
+export interface FaixaValor {
+  rotulo: string;
+  valor: number;
+  qtd: number;
+}
+
+// Agregados pré-computados POR CARTEIRA (o painel soma as carteiras
+// filtradas no cliente — com 20.000 títulos, agregamos no seed).
+export interface AgregadosCarteira {
+  carteiraId: string;
+  credorId: string;
+  qtdTitulos: number;
+  qtdDevedores: number;
+  valorEntregue: number;
+  valorAberto: number;
+  recuperadoMes: number;
+  recuperadoAcumulado: number;
+  pagosQtd: number;
+  faixasEntrada: FaixaValor[]; // atraso original ao entrar (4 faixas)
+  faixasCasa: FaixaValor[]; // tempo desde a entrada (em aberto)
+  eficienciaCanal: EficienciaCanal[];
+  eficienciaEtapa: EficienciaEtapa[];
+  ligacoes: LigacoesResumo;
+  recuperadoPorSemana: SerieSemana[]; // últimas 6 semanas
+  distribuicaoRating: { letra: Letra; qtd: number }[];
+  ratingMedio: number; // 0–100
+  promessasFeitas: number;
+  promessasCumpridas: number;
+  acordosVigentes: number;
+  previsaoAcordos: number; // parcelas a receber
+  score: number;
+}
+
+export interface BloqueioConformidade {
   id: string;
-  clienteId: string;
-  lojistaId: string;
-  tituloId: string;
-  para: string;
-  cumprida: boolean | null; // null = data ainda no futuro
+  escritorioId: string;
+  carteiraId: string;
+  regra: string; // qual trava da seção 3 agiu
+  detalhe: string;
+  em: string;
 }
 
-export interface Analista {
-  id: string;
-  nome: string;
-  turno: '8h–15h' | '15h–22h';
-  clienteIds: string[];
+export interface DadosEscritorio {
+  escritorio: Escritorio;
+  credores: Credor[];
+  carteiras: Carteira[];
+  agregados: AgregadosCarteira[];
+  devedores: Devedor[];
+  titulos: Titulo[];
+  filaHoje: Acao[]; // ações na janela hoje±3 (a fila do dia)
+  excecoes: Excecao[];
+  acordos: Acordo[];
+  documentos: DocumentoJuridico[];
+  honorarios: HonorariosCredor[];
+  bloqueios: BloqueioConformidade[];
+  score: { total: number; evolucao: { mes: string; valor: number }[] };
 }
 
-export interface ClienteResumo {
+export interface EscritorioResumo {
   id: string;
   nome: string;
   plano: Plano;
   cidade: string;
-  setor: string;
+  marca: Marca;
+}
+
+export interface AnalistaSentinella {
+  id: string;
+  nome: string;
+  turno: '8h–15h' | '15h–22h';
+  escritorioIds: string[]; // Avançado/Max — o console troca de escritório ativo
 }
 
 export interface IndiceSeed {
   geradoEm: string;
   hoje: string;
-  clientes: ClienteResumo[];
-  analistas: Analista[];
-  tokensExemplo: { token: string; lojista: string; industria: string }[];
+  escritorios: EscritorioResumo[];
+  analistas: AnalistaSentinella[];
+  tokensDevedor: { token: string; devedor: string; escritorio: string }[];
+  tokensCredor: { token: string; credor: string; escritorio: string }[];
 }
 
-export interface DadosCliente {
-  cliente: Cliente;
-  lojistas: Lojista[];
-  titulos: Titulo[];
-  acoes: Acao[];
-  excecoes: Excecao[];
-  acordos: Acordo[];
-  autorizacoes: Autorizacao[];
-  promessas: Promessa[];
-  score: { total: number; evolucao: { mes: string; valor: number }[] };
-}
+// ---------------------------------------------------------------- portais ----
 
-export interface TituloPortal {
+export interface TituloPortalDevedor {
   numero: string;
-  valor: number;
-  vencimento: string;
-  diasAtraso: number;
-  multa: number | null; // null quando o cliente não cadastrou multa (§12)
-  juros: number | null;
-  total: number;
+  credor: string;
+  valorOriginal: number;
+  encargos: number | null; // null quando a carteira não tem encargos cadastrados
+  valorAtualizado: number;
+  vencimentoOriginal: string;
   estado: EstadoTitulo;
 }
 
-export interface EntradaPortal {
-  lojista: { nome: string; cnpj: string; contatoNome: string };
-  industria: {
-    nome: string;
-    canais: Canal[];
-    temMultaCadastrada: boolean;
-    alcada: { descontoMaxPct: number; parcelasMax: number; prazoMaxDias: number };
-  };
-  titulosAbertos: TituloPortal[];
-  titulosPagos: { numero: string; valor: number; pagoEm: string }[];
-  acordos: { valorTotal: number; parcelas: number; parcelasPagas: number; status: string }[];
+export interface SimulacaoAcordo {
+  parcelas: number;
+  valorParcela: number;
+  custoTotal: number; // mostrado ANTES do aceite (Lei 14.181)
+  jurosEmbutidos: number;
 }
 
-export type DadosPortal = Record<string, EntradaPortal>;
+export interface EntradaPortalDevedor {
+  devedor: { nome: string; doc: string; tipo: TipoDevedor };
+  escritorio: {
+    nomeExibicao: string;
+    oab: string;
+    corPrimaria: string;
+    corClara: string;
+    mostrarOperadora: boolean;
+    contato: string;
+  };
+  credorOriginal: string;
+  titulosAbertos: TituloPortalDevedor[];
+  titulosPagos: { numero: string; valor: number; pagoEm: string }[];
+  acordos: { valorTotal: number; parcelas: number; parcelasPagas: number; status: string }[];
+  alcada: { parcelasMax: number; descontoMaxPct: number };
+  simulacoes: SimulacaoAcordo[]; // opções dentro da alçada, com custo total
+}
+
+export interface EntradaPortalCredor {
+  credor: { nome: string; contatoNome: string };
+  escritorio: {
+    nomeExibicao: string;
+    oab: string;
+    corPrimaria: string;
+    corClara: string;
+    mostrarOperadora: boolean;
+  };
+  hoje: string;
+  carteiras: {
+    nome: string;
+    tipo: TipoCarteira;
+    qtdTitulos: number;
+    qtdDevedores: number;
+    valorEntregue: number;
+    valorAberto: number;
+    recuperadoMes: number;
+    recuperadoAcumulado: number;
+    faixasEntrada: FaixaValor[];
+    eficienciaEtapa: EficienciaEtapa[];
+    distribuicaoRating: { letra: Letra; qtd: number }[];
+    ratingMedio: number;
+    acordosVigentes: number;
+    previsaoAcordos: number;
+    recuperadoPorSemana: SerieSemana[];
+  }[];
+}
+
+export type PortalDevedores = Record<string, EntradaPortalDevedor>;
+export type PortalCredores = Record<string, EntradaPortalCredor>;

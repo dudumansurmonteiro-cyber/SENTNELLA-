@@ -58,3 +58,70 @@ export function addDias(iso: string, dias: number): string {
 export function difDias(a: string, b: string): number {
   return Math.round((Date.parse(`${a}T12:00:00Z`) - Date.parse(`${b}T12:00:00Z`)) / 86400000);
 }
+
+// ------------------------------------------------------------------ v3 ----
+
+// Dicionários da trilha compacta de contatos ("E+2|47|w|resp"):
+// o 2º campo é "dias atrás" em relação ao hoje do seed.
+export const TRILHA_CANAL: Record<string, string> = {
+  w: 'WhatsApp', s: 'SMS', m: 'e-mail', c: 'carta', l: 'ligação', p: 'portal',
+};
+
+export const TRILHA_RESULTADO: Record<string, string> = {
+  ent: 'entregue',
+  lid: 'lido',
+  resp: 'respondido',
+  pg48: 'pago em até 48h após o contato',
+  at: 'ligação atendida',
+  atp: 'atendida — promessa de pagamento',
+  na: 'não atendida — reprogramada',
+  prev: 'comunicação prévia enviada com prova (CDC art. 43, §2º)',
+  notif: 'notificação extrajudicial enviada',
+  aut: 'preparado — aguarda autorização do escritório',
+  neg: 'negativação registrada',
+  prot: 'protesto registrado',
+  dos: 'dossiê judicial gerado',
+  acc: 'acordo fechado dentro da alçada',
+  ctt: 'contestou — cobrança pausada',
+  blq: 'bloqueada pela conformidade',
+  pend: 'aguardando resposta',
+};
+
+export interface PassoTrilhaExpandido {
+  etapa: string;
+  data: string;
+  canal: string;
+  resultado: string;
+  codigo: string;
+}
+
+export function expandirTrilha(trilha: string[], hoje: string): PassoTrilhaExpandido[] {
+  return trilha.map((p) => {
+    const [etapa, diasAtras, canal, cod] = p.split('|');
+    return {
+      etapa,
+      data: addDias(hoje, -Number(diasAtras)),
+      canal: TRILHA_CANAL[canal] ?? canal,
+      resultado: TRILHA_RESULTADO[cod] ?? cod,
+      codigo: cod,
+    };
+  });
+}
+
+export const FAIXAS_ENTRADA = ['até 30', '31–90', '91–180', 'acima de 180'] as const;
+
+export function faixaDoAtraso(dias: number): (typeof FAIXAS_ENTRADA)[number] {
+  if (dias <= 30) return 'até 30';
+  if (dias <= 90) return '31–90';
+  if (dias <= 180) return '91–180';
+  return 'acima de 180';
+}
+
+export const FAIXAS_CASA = ['0–15 dias', '16–30', '31–60', '61–90'] as const;
+
+export function faixaDaCasa(dias: number): (typeof FAIXAS_CASA)[number] {
+  if (dias <= 15) return '0–15 dias';
+  if (dias <= 30) return '16–30';
+  if (dias <= 60) return '31–60';
+  return '61–90';
+}

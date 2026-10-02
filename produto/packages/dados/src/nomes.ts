@@ -49,6 +49,22 @@ export function nomeLojista(rnd: Rnd, usados: Set<string>): string {
   return alt;
 }
 
+// Nome completo de pessoa física (devedores PF do v3) — fictício.
+export function nomePessoaCompleta(rnd: Rnd): string {
+  const nome = escolha(rnd, NOMES);
+  const s1 = escolha(rnd, SOBRENOMES);
+  let s2 = escolha(rnd, SOBRENOMES);
+  if (s2 === s1) s2 = escolha(rnd, SOBRENOMES);
+  return `${nome} ${s1} ${s2}`;
+}
+
+// CPF visivelmente fictício: começa em 000.000 e não passa por validação.
+export function cpfFicticio(seq: number): string {
+  const meio = String(seq % 1000).padStart(3, '0');
+  const dv = String((seq * 7) % 90 + 10).padStart(2, '0');
+  return `000.000.${meio}-${dv}`;
+}
+
 export const cidade = (rnd: Rnd) => escolha(rnd, CIDADES);
 export const nomePessoa = (rnd: Rnd) => `${escolha(rnd, NOMES)} ${escolha(rnd, SOBRENOMES)}`;
 
