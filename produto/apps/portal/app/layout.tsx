@@ -2,11 +2,13 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Portal do lojista — demonstração Sentinella',
+  title: 'Espaço do devedor e portal do credor — demonstração Sentinella',
   description:
-    'Portal do lojista da Sentinella Recebíveis (Fase 1): o lojista vê o que deve, paga ou propõe acordo — demonstração com dados fictícios.',
+    'Portais white label da plataforma Sentinella (Fase 1 do v3): o devedor regulariza com a marca do escritório — custo total antes do aceite, contestação que pausa, atendimento humano; o credor acompanha a carteira. Demonstração com dados fictícios.',
 };
 
+// Cada página define seu próprio rodapé: nos portais white label o rodapé é
+// do escritório (e "operada por Sentinella" só aparece conforme o plano).
 export default function RaizLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pt-BR">
@@ -18,13 +20,7 @@ export default function RaizLayout({ children }: { children: React.ReactNode }) 
           rel="stylesheet"
         />
       </head>
-      <body>
-        {children}
-        <footer className="container-m suave pb-8 pt-2 text-[12px]">
-          Operado pela Sentinella para a indústria · demonstração com dados fictícios — nenhuma
-          cobrança é real e as ações não persistem.
-        </footer>
-      </body>
+      <body>{children}</body>
     </html>
   );
 }
