@@ -14,7 +14,7 @@ import type { EntradaPortalDevedor, PortalDevedores } from '@sentinella/dados';
 const iniciaisDe = (nome: string) =>
   nome
     .split(' ')
-    .filter((p) => p[0] === p[0]?.toUpperCase())
+    .filter((p) => /^\p{Lu}/u.test(p))
     .slice(0, 2)
     .map((p) => p[0])
     .join('');

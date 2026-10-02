@@ -12,7 +12,12 @@ import { dataLonga, moedaCompacta, moedaCurta, pct } from '@sentinella/dados';
 import type { EntradaPortalCredor, PortalCredores } from '@sentinella/dados';
 
 const iniciaisDe = (nome: string) =>
-  nome.split(' ').filter((p) => p[0] === p[0]?.toUpperCase()).slice(0, 2).map((p) => p[0]).join('');
+  nome
+    .split(' ')
+    .filter((p) => /^\p{Lu}/u.test(p))
+    .slice(0, 2)
+    .map((p) => p[0])
+    .join('');
 
 function Kpi({ rotulo, valor, detalhe }: { rotulo: string; valor: string; detalhe?: string }) {
   return (

@@ -7,3 +7,4 @@ apps/painel/public/dados/
 apps/portal/public/dados/
 dados-exemplo/
 .env
+pub/

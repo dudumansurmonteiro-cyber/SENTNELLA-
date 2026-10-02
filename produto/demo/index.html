@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sentinella — demonstração</title>
+<meta name="description" content="Demonstração navegável da plataforma Sentinella: painel do escritório, console da operação, espaço do devedor e portal do credor — brancos fictícios, white label por escritório.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f4f6f5; --ink:#14211f; --ink-2:#44534e; --line-soft:#dde3e0;
+    --primary:#0e4a45; --on-primary:#f4f6f5; --panel:#ffffff;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --bg:#14211f; --ink:#f4f6f5; --ink-2:#a9b8b2; --line-soft:#24312d;
+      --primary:#7fb3ac; --on-primary:#14211f; --panel:#182722;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#14211f; --ink:#f4f6f5; --ink-2:#a9b8b2; --line-soft:#24312d;
+    --primary:#7fb3ac; --on-primary:#14211f; --panel:#182722;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font:15.5px/1.55 "IBM Plex Sans",system-ui,sans-serif;
+  }
+  .container{width:min(920px,100% - 2rem);margin-inline:auto}
+  h1,h2{font-family:"Bricolage Grotesque",Georgia,sans-serif;letter-spacing:-0.01em}
+  a{color:var(--primary)}
+  header{padding:40px 0 8px}
+  .marca{display:flex;align-items:center;gap:10px;font-family:"Bricolage Grotesque",Georgia,sans-serif;font-weight:600;font-size:19px}
+  h1{font-size:clamp(24px,4.5vw,32px);line-height:1.15;margin:14px 0 8px}
+  .sub{color:var(--ink-2);max-width:640px;margin:0}
+  .selos{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0 0}
+  .selo{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line-soft);border-radius:99px;padding:3px 12px;font-size:12.5px;color:var(--ink-2)}
+  .selo i{display:inline-block;width:10px;height:10px;border-radius:3px}
+  .cartoes{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin:26px 0 0;padding:0;list-style:none}
+  .cartao{background:var(--panel);border:1px solid var(--line-soft);border-radius:10px;padding:18px}
+  .cartao h2{margin:0 0 6px;font-size:17.5px}
+  .cartao p{margin:0 0 14px;color:var(--ink-2);font-size:13.5px}
+  .cartao .acesso{display:inline-block;background:var(--primary);color:var(--on-primary);border-radius:6px;padding:8px 14px;font-weight:500;font-size:14px;text-decoration:none}
+  .cartao .alt{display:block;margin-top:9px;font-size:12.5px}
+  .quem{color:var(--ink-2);font-size:12.5px;margin:6px 0 0}
+  footer{color:var(--ink-2);font-size:12.5px;padding:30px 0 40px;margin-top:34px;border-top:1px solid var(--line-soft)}
+  footer p{margin:6px 0;max-width:720px}
+</style>
+</head>
+<body>
+<header class="container">
+  <p class="marca">
+    <svg width="17" height="22" viewBox="24 0 152 200" aria-hidden="true"><path fill="var(--primary)" d="M46 10H154Q166 10 166 22V98Q166 144 100 190Q34 144 34 98V22Q34 10 46 10Z"/><path fill="var(--bg)" d="M61 92Q100 59 139 92Q100 125 61 92Z"/><circle fill="var(--primary)" cx="100" cy="92" r="14"/></svg>
+    Sentinella <span style="font-weight:400;color:var(--ink-2);font-size:14px">demonstração</span>
+  </p>
+  <h1>A operação de cobrança do escritório, com a marca do escritório.</h1>
+  <p class="sub">
+    Quatro superfícies navegáveis sobre 90 dias simulados: 3 escritórios fictícios, 8 credores,
+    15 carteiras, 6.000 devedores (pessoas e empresas) e 20.000 títulos percorrendo a régua
+    ancorada na entrada da carteira — com as travas de conduta aplicadas de verdade.
+  </p>
+  <div class="selos" aria-label="Escritórios fictícios da demonstração">
+    <span class="selo"><i style="background:#24466E"></i> Almeida &amp; Rocha · Avançado</span>
+    <span class="selo"><i style="background:#6B2430"></i> Serra &amp; Taveira · Max</span>
+    <span class="selo"><i style="background:#463B6B"></i> Oliveira Prado · Básico</span>
+  </div>
+</header>
+
+<main class="container">
+  <ul class="cartoes">
+    <li class="cartao">
+      <h2>Painel do escritório</h2>
+      <p>Visão geral, carteiras por credor com alçadas e honorários, devedores com rating
+      explicado, eficiência da régua e as pendências do advogado — assinatura, autorização
+      título a título, dossiês.</p>
+      <a class="acesso" href="painel/">Abrir o painel</a>
+      <span class="quem">Troque de escritório no topo: cores e dados mudam juntos.</span>
+    </li>
+    <li class="cartao">
+      <h2>Console da operação</h2>
+      <p>A mesa que atende em nome de cada escritório: fila de exceções com SLA, conversa com o
+      devedor, agenda de ligações e coordenação — com a faixa do escritório ativo sempre à vista.</p>
+      <a class="acesso" href="painel/console/">Abrir o console</a>
+      <span class="quem">No plano Básico, a mesa é do próprio escritório.</span>
+    </li>
+    <li class="cartao">
+      <h2>Espaço do devedor</h2>
+      <p>O link que o devedor recebe: marca do escritório, credor original identificado, 2ª via,
+      parcelamento com custo total antes do aceite, contestação que pausa e atendimento humano.</p>
+      <a class="acesso" id="link-devedor" href="portal/">Entrar como devedor</a>
+      <span class="alt"><a href="portal/">outros acessos de exemplo →</a></span>
+    </li>
+    <li class="cartao">
+      <h2>Portal do credor</h2>
+      <p>O que o credor acompanha da carteira entregue ao escritório: recuperação, faixas de
+      entrada, eficiência por etapa e relatório mensal imprimível.</p>
+      <a class="acesso" id="link-credor" href="portal/">Entrar como credor</a>
+      <span class="alt"><a href="portal/">outros acessos de exemplo →</a></span>
+    </li>
+  </ul>
+</main>
+
+<footer>
+  <div class="container">
+    <p><b>Tudo aqui é fictício</b>: escritórios, credores, pessoas, CPFs/CNPJs (começam em
+    000.000/00.000) e valores. Nenhuma mensagem real é enviada e as ações não persistem.</p>
+    <p>Boleto e Pix são emitidos na conta do credor ou do escritório — a plataforma não
+    intermedeia pagamentos. O rating é instrumento interno do escritório e do credor; o devedor
+    nunca o vê. Cobrança sempre em nome do escritório, dentro das regras de conduta com o
+    consumidor (CDC e Lei 14.181).</p>
+  </div>
+</footer>
+
+<script>
+  // Preenche os acessos diretos com os tokens de exemplo do seed.
+  fetch('portal/dados/exemplos.json')
+    .then(function (r) { return r.json(); })
+    .then(function (ex) {
+      var d = ex.tokensDevedor && ex.tokensDevedor[0];
+      var c = ex.tokensCredor && ex.tokensCredor[0];
+      if (d) document.getElementById('link-devedor').href = 'portal/d/?t=' + d.token;
+      if (c) document.getElementById('link-credor').href = 'portal/c/?t=' + c.token;
+    })
+    .catch(function () {});
+</script>
+</body>
+</html>
