@@ -1,6 +1,12 @@
-# Produto — Sentinella Recebíveis
+# Produto — Sentinella
 
-Monorepo do produto (`../CLAUDE.md` §7 e §11): painel do cliente, console do
+> **Nota do pivô v3 (02/10):** o brief vigente é o v3 (`../CLAUDE.md` — white
+> label para escritórios de cobrança). Este monorepo é a implementação das
+> Fases 1 e 2 do **v2** (`../BRIEF-V2.md`) e é a base de código sobre a qual a
+> Fase 1 do v3 será construída: hierarquia escritório → credor → carteira →
+> devedor, portais white label e console com troca de escritório.
+
+Monorepo do produto (brief v2, `../BRIEF-V2.md` §7 e §11): painel do cliente, console do
 analista, portal do lojista e, a partir da Fase 2, o **motor de régua real**
 sobre PostgreSQL — importação por planilha, fila de ações com conferência
 antes de cada envio, baixa de pagamentos e portal transacional. Nenhuma

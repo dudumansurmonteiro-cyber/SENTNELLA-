@@ -1,44 +1,39 @@
-# Sentinella Recebíveis
+# Sentinella
 
-A Sentinella faz a indústria receber o que vendeu a prazo: uma IA cobra e atende os
-lojistas pelo canal que o cliente escolher; uma central humana, das 8h às 22h, cuida
-das exceções e faz as ligações. O cliente acompanha tudo em um painel; o lojista vê
-suas dívidas em um portal próprio.
+A Sentinella é a central de cobrança **white label** dos escritórios de
+advocacia: a IA cobra pelos canais que o escritório define; analistas (do
+escritório ou da Sentinella) cuidam das exceções e das ligações das 8h às 22h;
+o escritório acompanha tudo por carteira e por credor; cada credor ganha um
+portal para ver sua carteira e cada devedor, um portal para pagar ou negociar
+— tudo com o nome do escritório.
 
-> **Sua empresa vendeu. A Sentinella faz você receber.**
+> **Sua marca na frente. Nossa operação atrás.**
 
-- **`CLAUDE.md`** — o brief v2 completo (produto, régua, planos, painel, portal,
-  console, dados, fases). É a fonte de verdade: qualquer tarefa começa por ele.
+- **`CLAUDE.md`** — o brief v3 (white label para escritórios de cobrança). É a
+  fonte de verdade: qualquer tarefa começa por ele. É um **delta** sobre o v2.
+- **`BRIEF-V2.md`** — o brief v2 completo (cobrança para indústrias),
+  preservado porque o v3 referencia tudo o que não altera.
 - **`PENDENCIAS.md`** — decisões pendentes; placeholders aparecem como
   "sob consulta" / "em definição", nunca com valores inventados.
 
-## Superfícies do produto (brief v2, §7)
+## Estado do projeto
 
-1. **Site público** — publicado no Webflow:
-   https://eduardos-top-notch-site-488aab.webflow.io
-2. **Painel do cliente + Console do analista** — em `produto/` (`apps/painel`,
-   Next.js)
-3. **Portal do lojista** — em `produto/` (`apps/portal`); na Fase 2, com API
-   persistente (acordo, 2ª via, contestação)
+**Pivô v3 adotado em 02/10.** As cinco superfícies do v3 (site, painel do
+escritório, portal do credor, portal do devedor, console com troca de
+escritório) ainda serão construídas na Fase 1 do v3, sobre a base já
+implementada do v2:
 
-**Fase 1** (telas sobre dados de demonstração) e **Fase 2** (régua real:
-importação por planilha, motor com fila e conferência, baixa de pagamentos,
-portal transacional sobre PostgreSQL) estão entregues em `produto/` — ver
-`produto/README.md` para rodar cada modo. Canais de mensagem operam em modo
-simulado até os fornecedores serem definidos (`PENDENCIAS.md`).
+- **Site público** — no Webflow, ainda no posicionamento v2:
+  https://eduardos-top-notch-site-488aab.webflow.io (pivô para o v3 pendente)
+- **`produto/`** — Fases 1 e 2 do v2 entregues: painel + console + portal
+  navegáveis, e o motor de régua real sobre PostgreSQL (importação por
+  planilha, fila com conferência pré-envio, baixa de pagamentos, portal
+  transacional). Ver `produto/README.md`. Essa base evolui para a hierarquia
+  do v3 (escritório → credor → carteira → devedor).
+- **Demo navegável** (dados fictícios do v2):
+  https://claude.ai/artifact/AZcXJ7wAB4rgmXZAEWoP5v
 
-Demonstração navegável das três superfícies (dados fictícios, gerados pelo
-motor real da Fase 2): https://claude.ai/artifact/AZcXJ7wAB4rgmXZAEWoP5v
+## Legado neste repositório
 
-## Legado v1 neste repositório
-
-`src/` contém o site Astro do posicionamento v1 ("IA gerenciada"), mantido como
-referência até o `apps/site` da Fase 1 substituí-lo:
-
-```bash
-npm install     # dependências
-npm run dev     # http://localhost:4321
-npm run build   # build em dist/
-```
-
-`legado/` guarda o MVP single-file anterior ao v1.
+`src/` contém o site Astro do posicionamento v1 ("IA gerenciada"); `legado/`
+guarda o MVP single-file anterior ao v1. Mantidos só como referência.

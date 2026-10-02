@@ -1,360 +1,298 @@
-# Sentinella Recebíveis — brief v2 para o Claude Code
+# Sentinella — brief v3 para o Claude Code: white label para escritórios de cobrança
 
-> Como usar: este arquivo substitui o brief anterior e é a fonte de verdade do projeto. Leia inteiro antes de qualquer tarefa. Tudo entre `[colchetes]` é decisão pendente: deve aparecer como placeholder ("sob consulta" / "em definição"), nunca ser preenchido com valor inventado. Os preços da seção 4 são uma proposta conservadora de lançamento e podem ser alterados sem mudar a estrutura.
+> Como usar: salve na raiz do repositório como `CLAUDE.md`, substituindo o v2. Este documento é um **delta**: tudo o que não está aqui continua valendo como no v2 (régua detalhada, modelo de dados, console do analista, direção de design, requisitos técnicos). Onde este arquivo e o v2 divergem, vale este. Tudo entre `[colchetes]` é decisão pendente: aparece como placeholder, nunca é preenchido com valor inventado.
 
-## 0. O que mudou em relação ao brief v1
+(O brief v2 completo está preservado em `BRIEF-V2.md` neste repositório, incluindo as decisões de 29/09 — preços de volume e lembretes D−20/D−5.)
 
-| Antes (v1) | Agora (v2) |
+## 0. O que mudou em relação ao v2
+
+| Antes (v2) | Agora (v3) |
 |---|---|
-| IA gerenciada genérica: atendimento, vendas, cobrança para qualquer empresa | Um produto só: **cobrança B2B operada** para indústrias e distribuidoras que vendem a prazo |
-| Planos Operação / Operação Plus | Três planos: **Básico, Avançado e Max** (seção 4) |
-| Só o site | Site **+ Painel do cliente + Portal do lojista + Console do analista** (seção 7) |
-| Preço "sob consulta" | Preço **tabelado com piso e teto**, conservador (seção 4) |
-| Um analista para dez clientes | **Um analista para cada cinco clientes**, 8h às 22h |
-| — | **Rating A–E** de cada lojista (seção 6) |
-| — | Cliente **escolhe os canais** de cobrança (WhatsApp, SMS, e-mail, carta, ligação) |
-
-A direção de design (paleta, tipografia, o que evitar) continua a do v1 e está resumida na seção 10.
+| Cliente: indústria/distribuidora que vende a prazo | Cliente: **escritório de advocacia que faz cobrança** para credores (bancos, varejo, educação, saúde, condomínios, indústria) |
+| Marca Sentinella visível para o devedor | **White label**: devedor e credor veem só a marca do escritório; Sentinella aparece apenas no contrato e, discretamente, no rodapé técnico |
+| Dois níveis: Sentinella → cliente → lojista | **Três níveis**: Sentinella → escritório → credores do escritório → devedores |
+| Etapa jurídica feita por "escritório parceiro" | **O cliente é o escritório**: a régua desemboca no fluxo judicial dele, sem parceiro externo |
+| Devedores só pessoa jurídica (lojistas) | Devedores **PJ e pessoa física** — entram todas as regras do CDC para consumidor (seção 3) |
+| Régua ancorada no vencimento (D0 = vence) | Régua ancorada na **entrada do título na carteira do escritório**, com variação por faixa de atraso (seção 4) |
+| Planos: quem opera é sempre a Sentinella | Planos separam **plataforma** (equipe do escritório opera) de **operação** (analistas Sentinella operam sob a marca do escritório) |
+| Preço por faixa de títulos ativos | Preço por **devedores ativos no mês**, sem qualquer participação nos honorários do escritório (seção 5) |
+| Portal do lojista | **Portal do devedor** + **portal do credor**, ambos com a marca do escritório |
 
 ---
 
-## 1. O que é a Sentinella Recebíveis
+## 1. O que é a Sentinella agora
 
-A Sentinella faz a indústria receber o que vendeu a prazo. Uma IA cobra e atende os lojistas pelo canal que o cliente escolher; uma central humana, das 8h às 22h, cuida de toda exceção e faz as ligações. O cliente acompanha tudo em um painel e o lojista vê suas dívidas em um portal próprio.
+A Sentinella é a central de cobrança white label dos escritórios de advocacia. O escritório contrata; a IA cobra pelos canais que o escritório define; analistas (do escritório ou da Sentinella) cuidam das exceções e das ligações das 8h às 22h; o escritório acompanha tudo por carteira e por credor; cada credor do escritório ganha um portal para ver sua carteira; cada devedor ganha um portal para pagar ou negociar. Tudo com o nome do escritório.
 
 Frase-síntese (site e todo material):
 
-**Sua empresa vendeu. A Sentinella faz você receber.**
+**Sua marca na frente. Nossa operação atrás.**
 
 O que a Sentinella **não é**:
-- Não é software que o financeiro do cliente configura e opera sozinho (isso é Neofin, iRecebi). Nós operamos.
-- Não é escritório de advocacia. A etapa judicial é feita por escritório parceiro com contrato direto com o cliente (Estatuto da OAB).
-- Não é seguradora. Nunca usar "seguro", "apólice", "cobertura", "garantia total" ou "100%".
+- Não é escritório de advocacia e não pratica advocacia. Nada que a plataforma gera substitui o ato privativo do advogado: petições, pareceres e notificações assinadas são do escritório.
+- Não traz clientes para o escritório. A Sentinella não faz captação de clientela nem recebe nada por credor indicado — isso é vedado pelo Código de Ética da OAB e desqualificaria o escritório.
+- Não recebe o dinheiro do devedor. Boletos e Pix são emitidos na conta do credor ou do escritório, conforme o contrato de cada carteira. A Sentinella nunca intermedia pagamento (evita enquadramento como instituição de pagamento junto ao BACEN).
+- Não é seguradora. Continuam proibidas as palavras "seguro", "apólice", "cobertura", "garantia total", "100%".
 
 ---
 
 ## 2. Para quem
 
-Indústrias e distribuidoras de médio porte que vendem a prazo (duplicata/boleto) para muitos lojistas.
+Escritórios de advocacia com área de cobrança estruturada, ou escritórios de cobrança com advogados, que operam carteiras de credores terceiros.
 
-Perfil mínimo do cliente (abaixo disso, um software barato resolve melhor e não vale forçar a venda):
-- Faturamento a partir de R$ 35–40 milhões/ano; faixa ideal de R$ 50 a 300 milhões.
-- Pelo menos 300 lojistas ativos comprando a prazo, ou cerca de 800 títulos por mês.
-- Inadimplência de 2% ou mais acima de 60 dias.
-- ERP com API ou exportação de dados (TOTVS Protheus, Sankhya, SAP Business One, Senior, Omie, Bling).
+Perfil mínimo (abaixo disso, um CRM de cobrança barato resolve):
+- A partir de 3.000 devedores ativos sob gestão, ou 3 credores recorrentes.
+- Equipe de cobrança de 5 a 80 pessoas (negociadores, atendentes, advogados).
+- Dor típica: custo e rotatividade da mesa de cobrança, sistema antigo sem WhatsApp oficial, relatório para o credor feito à mão em planilha, advogado perdendo tempo com negociação que não exige advogado.
 
-Quem decide a compra: diretor financeiro, controller ou dono. Quem usa o painel no dia a dia: o financeiro. Quem usa o portal: o financeiro do lojista.
+Quem decide a compra: sócio responsável pela área de cobrança ou gerente de operações do escritório. Quem usa no dia a dia: coordenador de cobrança, negociadores, advogados da fase judicial. Quem olha o portal do credor: o gestor de crédito do credor.
 
-Primeiro mercado: polo moveleiro de Arapongas (PR). Setores seguintes: alimentos e bebidas, materiais de construção, autopeças, confecção, distribuição farmacêutica.
+Concorrência direta (sistemas que esses escritórios já usam): Cobmais, CobCloud, CPJ-Cobrança, Recuperador CRM e similares. São CRMs de cobrança: organizam a carteira, mas **não operam** — a mesa continua sendo gente do escritório ligando. O diferencial da Sentinella é IA nos canais + operação humana opcional + portais white label para credor e devedor.
 
----
-
-## 3. A régua base
-
-Esta é a régua padrão da Sentinella. É uma sequência real, então pode receber numeração e linha do tempo no site e no painel. "D" é o dia do vencimento.
-
-| Momento | Ação | Canal padrão | Quem faz | Plano |
-|---|---|---|---|---|
-| D−3 | Lembrete com boleto ou Pix | WhatsApp + e-mail | IA | Básico, Avançado, Max |
-| D0 | "Vence hoje" + link de pagamento | WhatsApp + e-mail | IA | Básico, Avançado, Max |
-| D+3 | Aviso de atraso + 2ª via atualizada, com multa e juros exatamente como no contrato | WhatsApp + e-mail | IA | Básico, Avançado, Max |
-| D+7 | Proposta de acordo dentro da alçada definida pelo cliente | WhatsApp | IA; exceção vai ao analista | Básico, Avançado, Max |
-| D+10 | Primeira ligação | Telefone | Analista | Básico, Avançado, Max |
-| D+15 | Segunda ligação + e-mail formal registrando o que foi conversado | Telefone + e-mail | Analista | Básico, Avançado, Max |
-| D+15 | Bloqueio de novos pedidos (só com ERP integrado e aprovação do cliente) | ERP | Automático | Avançado, Max |
-| D+30 | Notificação extrajudicial com prova de recebimento | E-mail com confirmação, carta com AR ou cartório | Modelo redigido pelo escritório parceiro; envio pela Sentinella | Avançado, Max |
-| D+45 | Protesto e/ou negativação, com autorização do cliente título a título | Cartório eletrônico (CENPROT) / birô | Sentinella prepara; cliente autoriza | Avançado, Max |
-| D+60 a D+90 | Cobrança judicial | Escritório parceiro | Contrato direto cliente–escritório | Avançado, Max |
-
-**O plano Básico termina no D+15.** Títulos que passam de 15 dias no Básico continuam no painel com status "fora da régua" e o cliente recebe uma sugestão de migrar para o Avançado.
-
-Regras que o sistema precisa respeitar (não são opcionais):
-- **Duplicata antecipada, descontada ou endossada** perde o direito de regresso se não for protestada em 30 dias (Lei 5.474/68, art. 13, §4º). Para esses títulos a notificação sai no D+15 e o protesto até o D+25. O título precisa ter o campo `antecipado: sim/não`, vindo do ERP ou do banco.
-- **Ligações**: dias úteis das 8h às 20h, sábado das 8h às 14h; no máximo uma ligação por dia por devedor; só com o responsável financeiro ou sócio; aviso de gravação no início; registro de cada tentativa.
-- **Tom**: sem ameaça, sem constrangimento, sem expor a dívida a terceiros. Avisar sobre protesto, negativação ou ação judicial que o cliente realmente pode tomar não é ameaça.
-- **WhatsApp**: só API oficial via provedor homologado (BSP); mensagens fora da janela de 24h são templates aprovados na categoria utilidade, sem tom promocional; sempre há caminho para falar com humano.
-- **LGPD**: a Sentinella é operadora; todo cliente assina contrato de tratamento de dados; só contatos da empresa devedora.
+Primeiro mercado: `[definir — sugestão: escritórios de cobrança de São Paulo e Paraná com carteiras de educação, saúde e condomínios, onde o volume é alto e o ticket é médio]`.
 
 ---
 
-## 4. Os três planos
+## 3. Regras que mudam com devedor pessoa física
+
+Tudo do v2 (horários de ligação, uma ligação por dia, tom sem ameaça, WhatsApp só por API oficial, LGPD) continua. Entram as regras abaixo, obrigatórias no motor da régua e nos textos da IA:
+
+- **CDC, art. 42**: o devedor não pode ser exposto a ridículo nem submetido a constrangimento ou ameaça. **Art. 71** torna crime cobrar com ameaça, coação, constrangimento ou informação falsa. Mensagem que cite consequência que o escritório não vai de fato tomar é informação falsa — a IA só cita protesto, negativação ou ação judicial se a régua daquela carteira realmente chega lá.
+- **Terceiros**: nenhum contato com familiares, vizinhos, colegas ou empregador. O devedor PF só é contatado nos números e e-mails dele.
+- **Local de trabalho**: sem ligação para o trabalho, salvo se o próprio devedor indicou o número.
+- **Negativação (CDC, art. 43, §2º)**: comunicação prévia por escrito ao devedor antes de qualquer inclusão em cadastro de inadimplentes. A régua gera essa comunicação com prova de envio e só libera a negativação depois do prazo.
+- **Superendividamento (Lei 14.181/2021)**: sem assédio ou pressão para contratar ou renegociar, atenção especial a idosos e a quem declarar vulnerabilidade; toda proposta de acordo mostra valor total, juros e número de parcelas antes do aceite.
+- **Pedido de não contato**: se o devedor pedir para não ser contatado por um canal, o canal é bloqueado para ele e o caso vai ao analista para definir o próximo passo dentro da política do escritório.
+- **Contestação de dívida**: se o devedor contestar, a cobrança daquele título pausa automaticamente e abre exceção para o escritório responder. Nunca negativar título contestado sem decisão do escritório.
+- **Gravação**: toda ligação avisa a gravação no início; gravações ficam retidas por `[prazo definido pelo escritório, mínimo sugerido 5 anos]`.
+- **LGPD com PF**: dado mínimo necessário, base legal registrada por carteira (execução de contrato ou legítimo interesse do credor), política de retenção por carteira, e atendimento a pedidos de titular dentro do prazo legal. A Sentinella é operadora; o escritório e o credor definem entre si quem é o controlador, e isso fica registrado no cadastro da carteira.
+
+Essas regras não são configuráveis pelo escritório. O que o escritório configura é o que está **acima** delas (tom, horários mais restritos, canais).
+
+---
+
+## 4. A régua, reancorada
+
+Escritórios recebem dívidas já vencidas, muitas vezes com 60, 90 ou 180 dias de atraso. Por isso a régua agora tem dois eixos: **E** (dias desde a entrada do título na carteira do escritório) e a **faixa de atraso** em que o título já estava quando entrou.
+
+### Régua base por entrada na carteira
+
+| Momento | Ação | Canal padrão | Quem faz |
+|---|---|---|---|
+| E+0 | Boas-vindas à cobrança: "o escritório X está responsável por este débito", com o valor atualizado e opções de pagamento | WhatsApp + e-mail | IA |
+| E+2 | Proposta de acordo dentro da alçada da carteira | WhatsApp | IA; exceção vai ao analista |
+| E+5 | Primeira ligação | Telefone | Analista |
+| E+7 | Reforço com link do portal do devedor | SMS + WhatsApp | IA |
+| E+10 | Segunda ligação + e-mail formal registrando contatos | Telefone + e-mail | Analista |
+| E+15 | Comunicação prévia de negativação (CDC, art. 43, §2º) | Carta ou e-mail com prova de envio | Modelo do escritório; envio pela plataforma |
+| E+20 | Notificação extrajudicial | E-mail com confirmação, carta com AR ou cartório | Redigida e assinada pelo advogado; a plataforma prepara e envia |
+| E+30 | Negativação e/ou protesto, com autorização título a título | Birô / cartório eletrônico | Plataforma prepara; escritório autoriza |
+| E+45 | Última proposta antes do judicial | WhatsApp + ligação | IA + analista |
+| E+60 | Encaminhamento ao fluxo judicial do próprio escritório | Sistema jurídico do escritório | Automático, com dossiê |
+
+### Ajustes por faixa de atraso na entrada
+
+| Faixa de atraso ao entrar | Ajuste |
+|---|---|
+| Até 30 dias | Régua integral; começa com tom de lembrete |
+| 31 a 90 dias | Régua integral; tom de regularização desde o E+0 |
+| 91 a 180 dias | Pula o E+7; ligação já no E+3; proposta com desconto maior dentro da alçada |
+| Acima de 180 dias | Régua curta: E+0, E+3 (ligação), E+10 (comunicação prévia), E+20 (notificação), E+30 (negativação/protesto), E+45 (judicial) |
+| Título antecipado/descontado (PJ) | Mantém a regra do v2: protesto até 30 dias do vencimento, independente da entrada |
+
+### O que o escritório configura
+
+- Alçadas por carteira (desconto, parcelas, prazo, entrada mínima).
+- Canais por carteira e por tipo de devedor (PF/PJ).
+- Horário mais restrito que o legal, se o credor exigir.
+- Textos das mensagens, dentro dos limites da seção 3 (a plataforma bloqueia textos com termos proibidos antes de salvar).
+- No plano Max: dia, canal e tom de cada etapa; réguas diferentes por credor, por rating do devedor, por faixa de valor ou por tipo de dívida.
+
+### Dossiê para o judicial
+
+Ao chegar ao E+60 (ou quando o escritório mandar), a plataforma gera o dossiê: título e documentos, cálculo atualizado com memória, histórico completo de contatos com datas e canais, gravações, prova de envio das comunicações, promessas e acordos descumpridos. Exportável em PDF e enviável ao sistema jurídico do escritório.
+
+---
+
+## 5. Os três planos
+
+Todos os planos incluem a plataforma white label completa: IA nos canais, painel do escritório, portal do credor, portal do devedor, console de atendimento, rating A–E, auditoria. O que muda é **quem opera** e **quanto se personaliza**.
 
 ### Comparativo
 
-| | Básico | Avançado | Max |
+| | Básico — Plataforma | Avançado — Operação | Max — Personalizado |
 |---|---|---|---|
-| Régua | Régua Sentinella fixa até o D+15 | Régua Sentinella completa até o D+90 | O cliente define cada etapa: em quantos dias, por qual canal, com qual tom; pode ter réguas diferentes por rating do lojista ou por faixa de valor |
-| Mensagens (IA) | WhatsApp, SMS, e-mail — o cliente escolhe | Idem + carta | Idem |
-| Ligações | Analista no D+10 e D+15 | Analista no D+10 e D+15 | Analista nos dias que o cliente definir |
-| Etapa jurídica | Não tem | Notificação extrajudicial, protesto, negativação e encaminhamento ao escritório parceiro | Idem |
-| Bloqueio de pedidos no ERP | Não | Sim, com aprovação | Sim, com aprovação |
-| Central humana | Seg–sex, 8h–22h | Seg–sex, 8h–22h | Todos os dias, 8h–22h |
-| Resposta a exceção | Até 15 min | Até 15 min | Até 5 min |
-| Analista | Compartilhado | Compartilhado | De referência, nomeado |
-| Painel do cliente | Completo | Completo | Completo |
-| Portal do lojista | Sim | Sim | Sim |
-| Rating A–E | Sim | Sim | Sim + régua por rating |
-| Revisão com o cliente | Mensal | Quinzenal | Semanal |
-| Relatório | Mensal | Mensal + Score Sentinella | Semanal + Score Sentinella |
+| Quem atende exceções e liga | Equipe do próprio escritório, pelo console | Analistas Sentinella sob a marca do escritório, 8h–22h, seg–sex | Analistas Sentinella, time de referência nomeado, todos os dias 8h–22h |
+| Régua | Régua Sentinella com os ajustes por faixa de atraso | Idem + ajustes por tipo de dívida (PF/PJ, educação, saúde, condomínio…) | Totalmente configurável por credor, rating, valor e tipo |
+| Canais | WhatsApp, SMS, e-mail | + carta com AR, + ligação pelo console com gravação | Idem |
+| Comunicação prévia, notificação, protesto, negativação | Plataforma prepara; escritório envia e autoriza | Plataforma prepara e envia; escritório assina e autoriza | Idem |
+| Dossiê judicial | PDF | PDF + envio ao sistema jurídico `[integração]` | Idem + campos personalizados |
+| Portal do credor | Padrão, com a marca do escritório | Padrão + relatório mensal automático por credor | Personalizável por credor |
+| Usuários do escritório inclusos | 5 (adicional por usuário) | 10 | Ilimitados |
+| Resposta a exceção (SLA) | — (equipe do escritório) | Até 15 min | Até 5 min |
+| Revisão com o escritório | Mensal | Quinzenal | Semanal |
 
-### Preços (proposta de volume — decisão do Eduardo em 29/09)
+### Preços (proposta conservadora de lançamento — validar com três escritórios antes de publicar)
 
-Estratégia: preço baixo para ganhar **muitos clientes**, não poucos contratos
-caros. A precificação é deliberadamente pessimista quanto à disposição de
-pagar: o plano deve ser fácil de aprovar pelo financeiro sem virar projeto de
-diretoria. Preço mensal por faixa de títulos ativos no mês. Piso é o menor
-valor do plano; teto é o maior. Acima do teto, cobra-se excedente por título.
+Cobrança mensal por **devedores ativos no mês** (devedor com ao menos um título em aberto na plataforma). Piso é o menor valor do plano; teto é o maior; acima do teto, excedente por devedor.
 
 | Plano | Piso | Teto | Faixas | Implantação |
 |---|---|---|---|---|
-| Básico | R$ 1.490/mês | R$ 2.290/mês | até 500 títulos → piso; 501 a 1.500 → teto | R$ 2.500 a R$ 5.000 |
-| Avançado | R$ 2.990/mês | R$ 4.490/mês | até 1.500 → piso; 1.501 a 5.000 → teto | R$ 5.000 a R$ 9.000 |
-| Max | R$ 4.990/mês | R$ 7.490/mês | até 5.000 → piso; 5.001 a 10.000 → teto | R$ 8.000 a R$ 14.000 |
+| Básico | R$ 1.900/mês | R$ 4.900/mês | até 2.000 devedores → piso; 2.001 a 10.000 → teto | R$ 5.000 a R$ 9.000 |
+| Avançado | R$ 6.900/mês | R$ 24.900/mês | até 2.000 → piso; 2.001 a 10.000 → teto | R$ 9.000 a R$ 15.000 |
+| Max | R$ 29.000/mês | `[sob proposta, com piso]` | a partir de 10.000 devedores ou qualquer volume com time dedicado | R$ 15.000 a R$ 25.000 |
 
 Regras comuns:
-- Excedente acima do teto: R$ 1,00 por título.
-- Implantação: 50% na assinatura, 50% na entrada em produção. O valor dentro da faixa depende do ERP (conector pronto → piso; ERP novo ou muito customizado → teto).
-- Taxa de sucesso `[decidir: 3% sobre valores recuperados com mais de 30 dias de atraso, nos planos Avançado e Max]`.
-- Custos de terceiros repassados ao custo: tarifas da Meta (WhatsApp), SMS, carta, cartório.
+- Excedente acima do teto: R$ 0,60 por devedor ativo (Básico) e R$ 2,50 (Avançado).
+- Usuário adicional no Básico: R$ 90/mês.
+- Custos de terceiros repassados ao custo: tarifas Meta (WhatsApp), SMS, carta, cartório, consulta a birô.
+- Implantação: 50% na assinatura, 50% na entrada em produção.
 - Contrato de 12 meses, reajuste anual pelo IPCA.
-- No site, os preços aparecem como "a partir de R$ 1.490/mês" por plano, com a tabela completa abaixo. Não usar "sob consulta" onde há preço.
+- **Sem participação nos honorários nem nos valores recuperados.** O Código de Ética da OAB veda ao advogado partilhar honorários com não advogado; qualquer remuneração da Sentinella atrelada ao êxito do escritório coloca o escritório em risco disciplinar. A Sentinella cobra por uso da plataforma e por operação, como qualquer fornecedor. `[confirmar redação do contrato com advogado especializado em ética profissional]`
+- No site, os preços aparecem como "a partir de" por plano, com a tabela completa abaixo.
 
-Nota interna (não vai ao site): com preço de volume, o Básico é porta de
-entrada com margem negativa no início — a conta do analista 1:5 (mínimo de
-dois analistas), impostos e IA só fecha com escala. O modelo depende de três
-coisas: volume de clientes por analista acima da premissa inicial (automação
-do console), migração de Básico para Avançado em até 6 meses (o painel é o
-argumento: "veja o que está parado depois do D+15") e a taxa de sucesso, se
-aprovada. Revisitar a tabela quando houver 10 clientes pagantes.
+Nota interna (não vai ao site): no Avançado, o custo de analistas escala com o volume; a faixa de teto (10.000 devedores) está dimensionada para cerca de 4 analistas em pool compartilhado entre escritórios. Acima disso, só no Max, com time dedicado precificado por proposta. Dimensionamento de referência: um analista para cada 2.500 devedores ativos, com mínimo de dois analistas no pool para cobrir 8h–22h.
 
 ---
 
-## 5. Como operamos
+## 6. As cinco superfícies do produto
 
-**Central humana.** Um analista para cada cinco clientes, com mínimo de dois analistas desde o primeiro cliente para cobrir 8h–22h (dois turnos). O analista não fica olhando tela: o sistema classifica cada conversa e cada título, e o humano atua nas exceções e nas ligações programadas.
+### 6.1 Site público (Sentinella, para escritórios)
 
-**Gatilhos de exceção** (a conversa sai da IA e vai ao analista):
-- Lojista pede para falar com pessoa.
-- Sinal de irritação ou contestação (produto com defeito, entrega, valor discordado).
-- Pedido de acordo fora da alçada.
-- Título acima do valor-limite definido pelo cliente.
-- IA sem resposta confiável, ou repetindo a mesma resposta.
-- Qualquer mensagem que citaria valor, data, desconto ou juros diferentes do que está no ERP é **bloqueada antes do envio** e vai ao analista (conferência automática contra o ERP).
+- **Hero.** Título: *Sua marca na frente. Nossa operação atrás.* Subtítulo: *IA e analistas cobrando pelos canais certos, das 8h às 22h, com painéis para o seu escritório, para os seus clientes e para os devedores — tudo com o nome do seu escritório.* Botão principal: *Pedir diagnóstico da carteira*. Elemento visual: o painel simulado do v1/v2, agora com a marca fictícia "Almeida & Rocha Advogados" e um devedor saindo de "IA" para "analista" e voltando como "acordo fechado".
+- **O problema.** *Sua mesa de cobrança liga para quem tem tempo de ligar. A IA fala com todos. Seu advogado entra só quando é caso de advogado.*
+- **White label.** O que o credor vê (portal com a marca do escritório), o que o devedor vê (portal com a marca do escritório), o que ninguém vê (Sentinella).
+- **A régua.** Linha do tempo da seção 4, com os pontos do E+0 ao E+60 e a marcação de onde o escritório assume o judicial.
+- **Os três planos.** Tabela e preços da seção 5.
+- **Conformidade.** Uma seção própria: CDC, LGPD, OAB. Dizer claramente o que a plataforma bloqueia (tom, terceiros, horários, negativação sem comunicação prévia) e o que fica com o advogado (assinatura, autorizações, judicial). Para escritório, isso vende mais que velocidade.
+- **Perguntas frequentes.** Mínimo dez, incluindo: "Meus clientes vão saber que é a Sentinella?", "Quem assina a notificação?", "Vocês ficam com parte dos honorários?" (resposta: não, nunca), "Posso usar minha própria equipe?", "Como vocês tratam devedor pessoa física?", "Funciona com meu sistema jurídico?", "Quem emite o boleto?", "O que acontece se o devedor contestar?".
+- **Contato.** Formulário: nome, escritório, cargo, e-mail, telefone, quantidade de devedores ativos (faixas), quantidade de credores, tipos de carteira (seleção múltipla: educação, saúde, condomínio, varejo, financeiro, indústria, outros), sistema de cobrança atual, sistema jurídico atual.
+- Páginas secundárias: `/white-label`, `/regua`, `/planos`, `/conformidade`, `/privacidade`, `/piloto`.
+- O site **não** pode conter nada que pareça oferta de clientes ao escritório ("trazemos credores", "indicamos carteiras"). Isso é captação indireta e proíbe o escritório de usar a Sentinella.
 
-**O que o analista faz:** assume em até 15 min (5 no Max), resolve ou aciona o representante comercial do cliente, registra o incidente com causa; se o caso revelar regra faltando, propõe a mudança e ela entra na régua do cliente.
+### 6.2 Painel do escritório
 
-**Fora do horário (22h–8h):** a IA responde dúvidas simples e envia 2ª via; não fecha acordo, não executa ação irreversível; tudo o mais vai para a fila que o primeiro turno revisa às 8h.
+Herda as cinco áreas do painel do v2 (visão geral, devedores e maiores valores, eficiência por canal e etapa, hoje, configurações) com estas mudanças:
 
-**Ligações:** feitas pelo analista nos dias da régua, só para títulos relevantes (acima de `[R$ valor]` ou lojistas que ignoraram três mensagens). Tentativas não atendidas são registradas e reprogramadas para o dia seguinte, respeitando o limite de uma por dia.
+- **Nível de carteira acima de tudo.** Toda tela tem filtro por credor e por carteira; a visão geral soma todas as carteiras e mostra o ranking de carteiras por valor em aberto, por recuperação no mês e por rating médio.
+- **Os dez maiores valores em atraso** continuam no topo, agora com a coluna "credor".
+- **Faixas de atraso** por tempo desde a entrada e por atraso original, lado a lado.
+- **Fila do dia por analista** (do escritório ou da Sentinella) e por carteira: agendado · em andamento · pendente · não atendido · cancelado · finalizado · bloqueado.
+- **Pendências do advogado**: notificações a assinar, autorizações de protesto/negativação, contestações a responder, dossiês prontos para o judicial.
+- **Honorários a faturar por credor**: cálculo informativo do que o escritório tem a cobrar de cada credor sobre o recuperado no mês, com a regra de cada contrato cadastrada pelo escritório. É só relatório — a Sentinella não participa desse valor.
+- **Configurações**: credores e carteiras (regra de honorários, alçadas, canais, base legal LGPD, conta emissora de boleto), usuários e papéis (sócio, advogado, coordenador, negociador, financeiro), marca (logo, cores, nome que aparece nas mensagens e nos portais, número de WhatsApp do escritório), integrações.
+
+### 6.3 Portal do credor (marca do escritório)
+
+O que hoje o escritório manda em planilha mensal, o credor passa a ver quando quiser:
+
+- Carteira entregue: quantidade, valor, faixa de atraso.
+- Situação atual por status e por faixa; recuperado no mês e acumulado; acordos vigentes e previsão de recebimento.
+- Eficiência por etapa (quanto foi pago depois de cada ponto da régua) — mostra ao credor que o escritório trabalha.
+- Rating médio da carteira e distribuição A–E (sem identificar devedores individuais, se o escritório preferir).
+- Relatório mensal em PDF, com a marca do escritório.
+- O credor **não** vê outras carteiras, outros credores, nem o console.
+
+### 6.4 Portal do devedor (marca do escritório)
+
+Igual ao portal do lojista do v2, com estes ajustes:
+
+- Acesso por link protegido enviado nas mensagens; identificação por CPF/CNPJ + código, sem senha.
+- Mostra: quem é o credor original, quem está cobrando (o escritório), títulos em aberto com valor original, encargos conforme contrato e valor atualizado, títulos pagos, acordos e parcelas.
+- Ações: 2ª via de boleto, Pix, proposta de acordo dentro da alçada (aceite imediato) ou fora (vai ao analista), informar pagamento com comprovante, contestar título (pausa a cobrança e abre exceção), pedir contato por outro canal, pedir para falar com uma pessoa.
+- Toda proposta de acordo mostra o custo total antes do aceite (Lei 14.181/2021).
+- Nunca mostra rating, outros devedores, nem dados do escritório além do nome, OAB e contato.
+
+### 6.5 Console de atendimento
+
+É o console do analista do v2, agora usado por duas populações: a equipe do escritório (Básico) ou os analistas Sentinella (Avançado/Max). Diferenças:
+
+- O analista Sentinella trabalha com a identidade do escritório: assinatura nas mensagens, nome do escritório na ligação, roteiro aprovado pelo escritório.
+- Um analista Sentinella pode atender vários escritórios; o console troca de "escritório ativo" com troca completa de marca, roteiro e alçadas, e registra em qual escritório cada ação foi feita. Nunca mistura dados.
+- Papel "advogado": vê a fila de assinaturas e autorizações, assina notificação (upload do PDF assinado ou assinatura eletrônica `[decidir fornecedor]`), autoriza protesto/negativação em lote por carteira, recebe o dossiê judicial.
+- Visão do coordenador do escritório: carga por negociador, SLA, incidentes por causa, acordos por negociador.
 
 ---
 
-## 6. Rating A–E dos lojistas
+## 7. Modelo de dados — o que muda
 
-Cada lojista de cada cliente recebe uma letra, recalculada mensalmente, com base nos últimos 12 meses:
+Nova hierarquia multi-tenant: **Escritório** (tenant) → **Credor** → **Carteira** → **Devedor** → **Título**. Toda tabela de negócio carrega `escritorio_id`; as de carteira para baixo carregam também `credor_id` e `carteira_id`.
 
-| Critério | Peso | Como medir |
+Entidades novas ou alteradas:
+- **Escritório**: razão social, OAB, marca (logo, cores, nome de exibição), número de WhatsApp, plano, usuários e papéis, política de retenção.
+- **Credor**: razão social, contatos, regra de honorários (informativa), usuários do portal do credor.
+- **Carteira**: credor, tipo de dívida, alçadas, canais, base legal LGPD, controlador, conta emissora de boleto/Pix, data de entrada, régua aplicada (padrão ou personalizada).
+- **Devedor**: PF ou PJ; CPF/CNPJ; contatos próprios (nunca de terceiros); bloqueios de canal; pedidos de não contato; rating.
+- **Título**: + `data_entrada_carteira`, `atraso_original`, `contestado`, `comunicacao_previa_enviada_em`.
+- **Documento jurídico**: tipo (comunicação prévia, notificação, autorização, dossiê), carteira, títulos, modelo usado, quem assinou, quando, prova de envio.
+- **Marca ativa** em cada mensagem, ligação e documento gerado: registro de que foi emitido em nome de qual escritório.
+
+Estados do título ganham `contestado` (pausa a régua) e `judicial` (saiu da régua extrajudicial). Estados da ação e da exceção continuam como no v2.
+
+---
+
+## 8. Integrações
+
+| Sistema / canal | Como | Fase |
 |---|---|---|
-| Pontualidade | 40% | Dias médios de atraso ponderados pelo valor |
-| Tempo de resposta | 20% | Horas entre o contato da Sentinella e a primeira resposta do lojista |
-| Promessas cumpridas | 20% | % de promessas de pagamento pagas na data combinada |
-| Frequência de atraso | 10% | % de títulos pagos após o vencimento |
-| Exceções geradas | 10% | Contestações e escalonamentos por título |
+| Importação de carteiras | CSV/planilha padrão por credor, com validação e deduplicação | 1 |
+| WhatsApp | API oficial via BSP `[decidir]`, com o número do escritório; templates de utilidade aprovados por escritório | 2 |
+| E-mail e SMS | `[decidir fornecedores]` com domínio e remetente do escritório | 2 |
+| Boleto e Pix | Emissão na conta do credor ou do escritório, por carteira, via API bancária `[decidir bancos homologados]` ou importação de arquivo retorno; baixa automática | 2 |
+| Carta com AR / cartório | `[decidir]` | 3 |
+| Ligação | Softphone no console com gravação e aviso `[decidir]`; integração com discadora do escritório `[avaliar]` | 3 |
+| Negativação | Serasa/Boa Vista/SPC pelo convênio do escritório ou do credor | 3 |
+| Protesto | Central eletrônica dos cartórios `[validar procuração e acesso]` | 3 |
+| Sistema jurídico do escritório | Exportação de dossiê em PDF e JSON na Fase 2; conector com `[Projuris, Astrea, Advbox, SAJ ADV, Legal One — validar APIs]` na Fase 3 | 2 → 3 |
+| Enriquecimento de contatos | Consulta a birô para localizar telefones atualizados `[decidir fornecedor e base legal por carteira]` | 3 |
 
-Escala: **A** (paga antes ou no vencimento, responde no mesmo dia) · **B** · **C** · **D** · **E** (atraso recorrente acima de 30 dias, não responde ou não cumpre promessas). Lojista novo entra como C até ter três títulos de histórico.
-
-Para que serve:
-- No painel, o cliente vê o rating ao lado de cada lojista e a distribuição da carteira por letra.
-- No Max, o cliente pode ter réguas diferentes por rating (por exemplo, A recebe só lembrete; E recebe ligação já no D+3).
-- É o primeiro passo do produto futuro "a quem vender a prazo e quanto".
-
-O rating nunca é mostrado ao lojista.
+Nenhuma integração real é pré-requisito da Fase 1.
 
 ---
 
-## 7. Produto: as quatro superfícies
+## 9. Direção de design — o que muda
 
-### 7.1 Site público
+Continua tudo do v1/v2 (paleta, tipografia, âmbar só para exceção, nada de robô/cérebro, sem rótulos em caixa alta). Acréscimos:
 
-Mesma estrutura do v1, adaptada ao produto de cobrança:
-
-- **Hero.** Título: *Sua empresa vendeu. A Sentinella faz você receber.* Subtítulo: *Cobrança por IA e analistas humanos, das 8h às 22h, no canal que seus lojistas usam — com um painel que mostra cada real que está na rua.* Botão principal: *Pedir diagnóstico da carteira*. Elemento visual: o painel simulado do v1, agora mostrando um título em atraso saindo de "IA" para "analista" e voltando como "acordo fechado".
-- **O problema.** Título: *Atenção para a carteira inteira — do maior lojista ao menor, sem exceção.* Texto: *Nenhum financeiro dá conta de ligar para trezentos lojistas, e é assim que os títulos menores viram prejuízo. Na Sentinella, ninguém fica para depois: a IA acompanha e cobra cada lojista, um a um, no canal que ele usa; os analistas fazem as ligações e assumem as exceções, das 8h às 22h. O maior e o menor da carteira recebem o mesmo cuidado.* (Direção definida pelo Eduardo em 28/09: a seção deve mostrar atenção a todos os lojistas do cliente, sem exceção — nunca sugerir que os menores ficam para depois. O literal "100%" segue proibido pela seção 12; a ideia é dita com "todos, sem exceção".)
-- **A régua.** Linha do tempo da seção 3, com os pontos do D−3 ao D+90 e a marcação de onde cada plano termina.
-- **Os três planos.** Tabela comparativa e preços da seção 4.
-- **O painel.** Uma demonstração navegável do painel dentro do site (decisão do Eduardo em 28/09), com dados e empresas claramente fictícios e rótulo "demonstração": KPIs (total a receber, em atraso, recuperado no mês, Score Sentinella), atraso por faixa, recuperado por semana, os dez maiores valores em atraso com rating e etapa da régua, e a fila de hoje. Quando a Fase 1 estiver em produção, capturas reais substituem ou acompanham a demonstração — nunca apresentar os números fictícios como resultado real.
-- **O portal do lojista.** Uma captura e três linhas: o lojista vê o que deve, paga ou propõe acordo, fala com uma pessoa.
-- **Compromissos.** SLA por plano; "responsabilidade contratual com teto definido".
-- **Perguntas frequentes.** Mínimo oito, incluindo: "Vocês cobram de forma agressiva?", "E se o lojista contestar a entrega?", "Funciona com meu ERP?", "Quem faz a parte judicial?", "Como fica a LGPD?", "Posso escolher só WhatsApp?".
-- **Contato.** Formulário de diagnóstico: nome, empresa, cargo, e-mail corporativo, telefone, ERP usado, faturamento anual (faixas), quantidade de lojistas ativos (faixas), inadimplência estimada acima de 60 dias (faixas).
-- Páginas secundárias: `/regua`, `/planos`, `/portal-do-lojista`, `/privacidade`, `/piloto`.
-
-### 7.2 Painel do cliente
-
-É o produto que o cliente abre todo dia. Cinco áreas, em ordem de importância.
-
-**a) Visão geral**
-- Total a receber; total em atraso; recebido no mês; recuperado após atraso no mês.
-- Atraso por faixa: 1–7, 8–15, 16–30, 31–60, mais de 60 dias — em valor e em quantidade de títulos.
-- Prazo médio de recebimento (DSO); % de títulos pagos até o vencimento; % de promessas cumpridas.
-- Score Sentinella da carteira (0–100) e evolução mensal.
-
-**b) Devedores e maiores valores**
-- Painel fixo no topo: **os dez maiores valores em atraso**, por lojista, com valor, dias de atraso, rating e etapa da régua em que está. Este é o destaque visual mais forte da tela.
-- Lista completa de lojistas com filtros: rating, faixa de atraso, etapa, canal, valor.
-- Ficha do lojista: títulos abertos e pagos, histórico de contatos (mensagem, ligação, resposta), promessas, acordos, exceções, rating e por quê.
-- Quantos lojistas devem hoje, quanto, e há quanto tempo (distribuição).
-
-**c) Eficiência por canal e por etapa**
-- Mensagens: enviadas, entregues, lidas, respondidas, pagas em até 48h após o contato — por canal (WhatsApp, SMS, e-mail, carta) e por etapa da régua (D−3, D0, D+3, D+7…).
-- Ligações: realizadas, atendidas, não atendidas, promessas obtidas, promessas cumpridas, pagas em até 7 dias.
-- Conversão de cada etapa: quanto foi pago depois de cada ponto da régua. É o que diz ao cliente qual etapa funciona.
-- Comparação mês a mês.
-
-**d) Hoje (operação do dia)**
-- Ações programadas para hoje: quantas mensagens saem, quantas ligações o analista vai fazer, quantas notificações, quantos protestos aguardam autorização.
-- Fila por status: **agendado · em andamento · pendente (aguardando resposta do lojista) · não atendido · cancelado · finalizado**.
-- Exceções abertas agora e quem está cuidando.
-- Pendências que dependem do cliente: autorizações de protesto, contestações para o representante responder, alçadas a aprovar.
-
-**e) Configurações**
-- Canais habilitados (WhatsApp, SMS, e-mail, carta, ligação) e ordem de preferência.
-- Alçadas de negociação: desconto máximo, parcelamento máximo, prazo máximo, valor acima do qual sempre vai ao analista.
-- Régua: somente leitura no Básico e Avançado; editável no Max (dia, canal, tom e texto de cada etapa; réguas por rating ou faixa de valor).
-- Horários e feriados; lista de lojistas que não devem ser cobrados (em negociação comercial, estratégicos).
-- Usuários e permissões; integrações (ERP, WhatsApp, e-mail).
-- Exportação: CSV e PDF de qualquer tela; relatório mensal em PDF.
-
-### 7.3 Portal do lojista
-
-Interpretação adotada: é o "parecido com a Conta Azul" — uma tela financeira limpa onde **o lojista (devedor)** vê o que deve à indústria. Se a intenção era outra, ajustar aqui.
-
-- Acesso por link protegido enviado no WhatsApp ou e-mail (sem senha), com a marca da indústria; a Sentinella aparece discretamente como operadora.
-- O lojista vê: títulos em aberto com vencimento, valor original, multa e juros já calculados, dias de atraso; títulos pagos; acordos vigentes e parcelas.
-- Ações: baixar 2ª via de boleto, copiar Pix, propor acordo (dentro da alçada, aprovado na hora pela IA; fora dela, vai ao analista), informar pagamento já feito (anexa comprovante), contestar um título (abre exceção e avisa o representante), falar com uma pessoa.
-- Nunca mostra rating, nem dados de outros lojistas, nem o que a indústria deve a terceiros.
-- Mobile-first: o financeiro do lojista abre isso no celular.
-
-### 7.4 Console do analista (interno)
-
-Necessário para o um-para-cinco funcionar.
-
-- Fila de exceções com cronômetro do SLA, ordenada por valor e tempo.
-- Ao assumir: a conversa inteira, a ficha do lojista, os títulos, a alçada do cliente e as regras da régua na mesma tela. Botões para: responder, fechar acordo dentro da alçada, propor fora da alçada (vai ao cliente aprovar), acionar representante, agendar ligação, registrar incidente com causa, marcar título como contestado.
-- Agenda de ligações do dia por cliente, com roteiro de ligação do plano e campo de registro (atendida, não atendida, promessa, data).
-- Painel de todos os clientes do analista: exceções abertas, ligações pendentes, títulos parados.
-- Visão do coordenador: carga por analista, SLA cumprido, incidentes por causa, sugestões de regra pendentes.
+- **Site da Sentinella** fala com advogado: sóbrio, denso em informação, seção de conformidade com peso visual igual à de planos. Nada de "revolucionário".
+- **Portais white label**: a plataforma aplica logo, nome e duas cores do escritório sobre uma base neutra. A base precisa funcionar com qualquer cor primária — testar com três escritórios fictícios de cores diferentes no seed. A Sentinella aparece só como "plataforma operada por" em letra pequena no rodapé, e o escritório pode remover no Max.
+- **Console**: ao trocar de escritório ativo, a barra superior muda de cor e nome — o analista nunca pode ter dúvida de em nome de quem está falando.
 
 ---
 
-## 8. Modelo de dados e estados
+## 10. Fases de construção
 
-Multi-tenant: toda tabela de negócio carrega `cliente_id`. Nunca misturar dados entre clientes.
+1. **Fase 1 — Tudo com dados de demonstração.** Seed com 3 escritórios fictícios (cores diferentes), 8 credores, 15 carteiras de tipos variados (educação, saúde, condomínio, varejo, indústria), 6.000 devedores PF e PJ, 20.000 títulos com faixas de atraso variadas, 90 dias de histórico. Motor de régua simulado com os dois eixos da seção 4 e as regras da seção 3 ativas (bloqueios visíveis no seed). Painel do escritório, portal do credor, portal do devedor, console com troca de escritório, site.
+2. **Fase 2 — Operação real.** Importação de carteira, régua com fila, WhatsApp/e-mail/SMS reais, boleto/Pix por carteira, conferência contra a carteira antes de cada envio, dossiê em PDF/JSON, portal do devedor com acordo e contestação funcionando.
+3. **Fase 3 — Jurídico e escala.** Assinatura eletrônica, carta com AR, negativação e protesto, ligações com gravação, conector com sistema jurídico, enriquecimento de contatos, relatório mensal automático por credor.
 
-Entidades principais:
-- **Cliente** (a indústria): plano, canais, alçadas, régua, ERP, usuários.
-- **Lojista** (o devedor): CNPJ, contatos (financeiro, sócio), rating atual e histórico, lista de bloqueio.
-- **Título**: número, valor, vencimento, origem (ERP/CSV), `antecipado`, multa/juros contratuais, status.
-- **Ação de cobrança**: título, etapa da régua, canal, data programada, status, resultado (entregue, lido, respondido, atendida, promessa…).
-- **Conversa**: canal, mensagens, quem falou (IA, analista, lojista), motivo de exceção.
-- **Acordo**: título(s), condições, parcelas, status.
-- **Exceção/Incidente**: motivo, quem assumiu, tempo até assumir, resolução, causa, regra sugerida.
-- **Autorização**: protesto, negativação, bloqueio — pedido, quem aprovou, quando.
-
-Estados do **título**: `a vencer → vencido → em negociação → acordo → pago | protestado | negativado | jurídico | contestado | cancelado | fora da régua` (este último só no Básico após D+15).
-
-Estados da **ação**: `agendada → em andamento → finalizada | não atendida | pendente | cancelada | bloqueada` (bloqueada = barrada pela conferência contra o ERP).
-
-Estados da **exceção**: `aberta → em atendimento → resolvida | devolvida ao cliente`.
-
-Toda mudança de estado gera registro com data, hora e autor (IA, analista, cliente, lojista, sistema). É a trilha de auditoria que o cliente exporta e que protege a Sentinella.
+Ordem dentro da Fase 1: seed → painel do escritório → portal do credor → portal do devedor → console → site.
 
 ---
 
-## 9. Integrações e canais
+## 11. Interpretações que fiz — confirmar ou corrigir
 
-| Canal / sistema | Como | Fase |
-|---|---|---|
-| WhatsApp | API oficial via BSP `[decidir: 360dialog, Gupshup, Twilio ou Zenvia]`; templates de utilidade aprovados; número da indústria | 2 |
-| E-mail | Resend ou SES `[decidir]`, com confirmação de leitura onde possível | 2 |
-| SMS | Zenvia ou Twilio `[decidir]` | 2 |
-| Carta com AR | Serviço de carta registrada digital `[decidir]` | 3 |
-| Ligação | Softphone no console do analista com gravação e aviso `[decidir fornecedor]`; voz por IA fica para depois | 3 |
-| ERP | Fase 1: importação por CSV/planilha padrão. Fase 2: um conector (Omie ou Bling, pela API aberta). Fase 3: Sankhya, TOTVS Protheus, SAP B1, Senior | 1 → 3 |
-| Protesto | Integração com a central eletrônica dos cartórios (CENPROT) `[validar acesso e procuração com advogado]` | 3 |
-| Negativação | Pelo convênio do próprio cliente com Serasa/Boa Vista | 3 |
-| Pagamento | Leitura de boleto/Pix pelo ERP ou banco do cliente; baixa automática | 2 |
+1. **"Escritórios de advocacia que trabalham com cobrança"** = escritórios que cobram **para credores terceiros**. Se a ideia incluir escritórios que cobram os próprios honorários atrasados, é outro produto e precisa de brief próprio.
+2. **White label total**: credor e devedor nunca veem a Sentinella, salvo o rodapé técnico removível no Max. O contrato é entre Sentinella e escritório; o escritório é quem responde perante credor e devedor.
+3. **O Básico é só plataforma**: a equipe do escritório opera. É o plano que compete de frente com os CRMs de cobrança e por isso é o mais barato.
+4. **Analistas Sentinella falam em nome do escritório** nos planos Avançado e Max. Isso exige que o escritório aprove roteiros e supervisione — a plataforma registra essa aprovação. `[confirmar com advogado se há algum limite ético adicional para equipe terceirizada falando em nome do escritório; a prática de mesa de cobrança terceirizada é comum, mas vale o parecer]`
+5. **Sem taxa de sucesso** em nenhum plano, pela vedação de partilha de honorários. Se você quiser remuneração variável, o único caminho que eu vejo é por volume operado (devedores ativos, mensagens, ligações), nunca por valor recuperado.
+6. **Sentinella não toca no dinheiro.** Boleto e Pix saem na conta do credor ou do escritório.
+7. **Devedor PF entra**, com todas as regras da seção 3 travadas no motor. Se você quiser começar só com PJ para simplificar, a seção 3 vira fase 2.
+8. **Rating A–E** continua por devedor e ganha média por carteira, visível ao credor.
+9. **Preços** são proposta conservadora e precisam de validação com três escritórios antes de ir ao site.
 
-Nenhuma integração real é pré-requisito para a Fase 1 (seção 11): o painel, o portal e o console nascem sobre dados de demonstração.
+Decisões pendentes além dessas: `[domínio e e-mail]`, `[razão social e CNPJ]`, `[BSP de WhatsApp]`, `[fornecedores de e-mail, SMS, carta, telefonia, assinatura eletrônica]`, `[bancos para emissão de boleto]`, `[sistemas jurídicos a integrar]`, `[parecer sobre ética profissional: terceirização da mesa, white label e modelo de remuneração]`, `[textos de política de privacidade e DPA]`.
 
 ---
 
-## 10. Direção de design (resumo do v1 + regras para o painel)
+## 12. Critérios de aceite da Fase 1
 
-- Paleta: fundo `#F4F6F5`, tinta `#14211F`, primária `#0E4A45`, neutro `#C6CFCB`, sinal âmbar `#D99A00` **só para exceções e ações que precisam de humano**. Modo escuro automático.
-- Tipografia: Bricolage Grotesque para títulos; IBM Plex Sans para texto e para o painel, com algarismos tabulares nas colunas numéricas.
-- O elemento memorável do site continua sendo a sequência do painel no hero, uma vez, respeitando `prefers-reduced-motion`.
-- **Painel:** denso mas legível; tabelas com números alinhados à direita e valores em R$ com duas casas; sem cartões arredondados para tudo; bordas só onde encodam estrutura. Os "dez maiores valores" ganham o maior peso visual da tela por tamanho e posição, não por cor.
-- **Rating A–E:** letra dentro de um selo com escala de cinco tons neutros e a letra sempre visível — nunca só cor (acessibilidade).
-- **Status:** cada status tem um ícone e um texto; cor é reforço, não a única informação.
-- Evitar tudo o que o v1 lista: creme com terracota, preto com neon, rótulos em caixa alta, setas em botões, animação em cada seção, gradientes, ícones de robô/cérebro, uma palavra destacada no título.
-
----
-
-## 11. Requisitos técnicos e fases de construção
-
-**Stack sugerida** (justificar antes de trocar): Next.js (App Router) + TypeScript + Tailwind; PostgreSQL com Prisma; autenticação com papéis (admin Sentinella, analista, cliente, lojista via link protegido); fila de jobs para a régua (BullMQ + Redis ou cron gerenciado); um monorepo com `apps/site`, `apps/painel` (cliente + console do analista) e `apps/portal` (lojista), compartilhando `packages/db` e `packages/ui`. Deploy: Vercel ou Cloudflare `[decidir]`; banco gerenciado `[decidir]`.
-
-**Requisitos gerais:** `lang="pt-BR"` em tudo; mobile-first (portal e site) e desktop-first (painel e console) — testar em 360, 768, 1280, 1440; acessibilidade AA, foco visível, `prefers-reduced-motion`; Lighthouse acima de 90 no site; logs de auditoria em toda mudança de estado; dados de teste nunca com CNPJ real.
-
-**Fases** (cada uma entregável e demonstrável sozinha):
-
-1. **Fase 1 — Site + painel + portal + console com dados de demonstração.** Motor de régua simulado (gera ações agendadas a partir de títulos fictícios), rating calculado sobre os dados de exemplo, todas as telas da seção 7 navegáveis. Seed com 3 clientes fictícios, 400 lojistas, 3.000 títulos e 90 dias de histórico, com nomes claramente fictícios.
-2. **Fase 2 — Régua real.** Importação CSV, motor de régua com fila, WhatsApp/e-mail/SMS de verdade, conferência contra os dados importados antes de cada envio, portal com 2ª via e proposta de acordo, baixa de pagamento por importação.
-3. **Fase 3 — Operação completa.** Conector de ERP, ligações pelo console com gravação, carta com AR, notificação extrajudicial, fluxo de autorização de protesto/negativação, relatório mensal em PDF, régua editável do Max.
-
-Começar pela Fase 1, na ordem: seed → painel (a, b, d) → portal → console → site.
-
----
-
-## 12. O que não fazer
-
-- Não inventar clientes, logos, depoimentos ou números de resultado. Os números do site vêm do exemplo de retorno (indústria de R$ 60 milhões) e são apresentados como estimativa.
-- Não usar "seguro", "apólice", "cobertura", "garantia total", "100%", "revolucionário", "disruptivo".
-- Não deixar texto em inglês na interface (inclusive status: é "pendente", não "pending").
-- Não mostrar o rating ao lojista. Não mostrar dados de um cliente para outro.
-- Não enviar nenhuma mensagem real a partir de dados de demonstração. Em ambiente de desenvolvimento, todos os canais ficam em modo simulado por padrão.
-- Não calcular multa e juros com valores "padrão": sempre a partir do que está cadastrado por cliente. Se não houver cadastro, a mensagem não menciona multa.
-- Não substituir `[placeholders]` por valores inventados.
-
----
-
-## 13. Interpretações que fiz — confirmar ou corrigir
-
-1. O "parecido com a Conta Azul" é o **portal do lojista** (o devedor vê suas dívidas e prazos). Se a intenção era uma visão tipo Conta Azul para a própria indústria, isso já é o painel do cliente (7.2) — avisar para eu fundir.
-2. O **painel do cliente está em todos os planos**, inclusive no Básico. A diferença entre planos está na régua, nos canais, na etapa jurídica, na personalização e no SLA — não em esconder informação.
-3. O **Básico termina no D+15**, sem notificação, protesto ou jurídico. Títulos além disso ficam visíveis como "fora da régua".
-4. **Carta** só no Avançado e no Max, porque na prática é o veículo da notificação extrajudicial.
-5. **Ligações são humanas em todos os planos**, feitas pelo analista. Voz por IA fica para uma fase futura.
-6. **Central 7 dias por semana** só no Max. Básico e Avançado são seg–sex.
-7. Preços por **faixa de títulos ativos no mês**, não por conversas.
-8. **Taxa de sucesso** ficou como decisão pendente.
-9. Um analista para cinco clientes, com mínimo de dois analistas, é premissa de custo — o console (7.4) existe para que isso se sustente.
-
-Decisões pendentes além dessas: `[domínio e e-mail]`, `[razão social e CNPJ]`, `[BSP de WhatsApp]`, `[fornecedores de e-mail, SMS, carta e telefonia]`, `[valor-limite para ligação]`, `[escritório parceiro]`, `[texto da política de privacidade e do DPA, revisados por advogado]`.
-
----
-
-## 14. Critérios de aceite
-
-**Fase 1 está pronta quando:**
-1. As três aplicações (site, painel com console, portal) sobem localmente com um comando e um seed.
-2. O painel mostra as cinco áreas da seção 7.2 com os dados de demonstração, incluindo os dez maiores valores no topo, a fila por status e a eficiência por canal e etapa.
-3. O rating A–E é calculado pela fórmula da seção 6 e a ficha do lojista explica a nota.
-4. O motor simulado gera as ações da régua da seção 3 respeitando o plano de cada cliente fictício (o Básico para no D+15) e a regra dos títulos antecipados.
-5. O portal do lojista abre por link, mostra só os títulos daquele lojista e permite propor acordo dentro da alçada.
-6. O console mostra a fila de exceções com cronômetro e permite assumir, resolver e registrar incidente.
-7. Nenhuma das palavras proibidas aparece em lugar nenhum; todos os `[placeholders]` estão listados em `PENDENCIAS.md`.
-8. Site com Lighthouse acima de 90 e os preços da seção 4 publicados como "a partir de".
-
-**Fase 2 e 3** terão critérios próprios quando a Fase 1 for aprovada.
+1. As três aplicações (site, painel + console, portais) sobem localmente com um comando e um seed.
+2. O painel do escritório filtra por credor e carteira, mostra os dez maiores valores com credor, as faixas de atraso nos dois eixos, a fila do dia por status e as pendências do advogado.
+3. O portal do credor mostra só a carteira daquele credor, com a marca do escritório, e gera o relatório mensal em PDF.
+4. O portal do devedor abre por link, mostra só os títulos daquele devedor, exibe o custo total antes de qualquer aceite e permite contestar (o título entra em `contestado` e a régua pausa).
+5. O console troca de escritório ativo com mudança completa de marca, roteiro e alçadas, e cada ação registra em nome de qual escritório foi feita.
+6. O motor simulado aplica a régua da seção 4 pelos dois eixos, bloqueia textos com termos proibidos, impede negativação sem comunicação prévia registrada e impede qualquer contato com dado de terceiro.
+7. Nenhuma das palavras proibidas aparece; nenhum texto promete trazer clientes ao escritório; todos os `[placeholders]` estão em `PENDENCIAS.md`.
+8. Site com Lighthouse acima de 90, seção de conformidade publicada e preços "a partir de".

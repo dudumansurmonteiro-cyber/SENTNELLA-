@@ -1,69 +1,70 @@
-# Pendências — brief v2 (Sentinella Recebíveis)
+# Pendências — brief v3 (Sentinella white label)
 
-Decisões abertas do `CLAUDE.md` v2. Enquanto não forem resolvidas, os pontos abaixo
-aparecem nas superfícies do produto como "sob consulta" ou "em definição" — nunca
-com valores inventados.
+Decisões abertas do `CLAUDE.md` v3. Enquanto não forem resolvidas, os pontos
+abaixo aparecem nas superfícies do produto como "sob consulta" ou "em
+definição" — nunca com valores inventados.
 
 ## Negócio e jurídico
 
-- [ ] Razão social e CNPJ (rodapé)
-- [ ] Taxa de sucesso — decidir se entra: 3% sobre valores recuperados com mais de
-      30 dias de atraso, nos planos Avançado e Max (`CLAUDE.md` §4)
-- [ ] Escritório parceiro para a etapa judicial (contrato direto cliente–escritório)
+- [ ] Razão social e CNPJ da Sentinella (rodapé e contratos)
+- [ ] **Parecer de ética profissional (OAB)**: terceirização da mesa de cobrança
+      falando em nome do escritório, white label e modelo de remuneração
+      (`CLAUDE.md` §5 e §11.4) — redação do contrato sem partilha de honorários
+- [ ] **Validação dos preços com três escritórios** antes de publicar a tabela
+      no site (`CLAUDE.md` §5 e §11.9) — observação: o aceite da Fase 1 (§12.8)
+      pede preços "a partir de" no site; decidir a ordem (validar → publicar)
+- [ ] Primeiro mercado `[sugestão do brief: escritórios de cobrança de SP e PR
+      com carteiras de educação, saúde e condomínios]`
+- [ ] Prazo de retenção de gravações por escritório (mínimo sugerido: 5 anos)
+- [ ] Teto do plano Max (`[sob proposta, com piso]`)
 - [ ] Teto de responsabilidade contratual — definir com advogado
-- [ ] Política de privacidade e DPA (contrato de tratamento de dados) revisados por
-      advogado — /privacidade segue em versão preliminar; /termos é página-stub
-- [ ] Valor-limite de título para ligação do analista (`CLAUDE.md` §5)
-- [ ] Condições do projeto-piloto (primeiro mercado: polo moveleiro de Arapongas-PR)
-- [ ] CENPROT: validar acesso e procuração para protesto eletrônico (com advogado)
-- [ ] Texto definitivo da notificação extrajudicial (D+30): modelo redigido pelo
-      escritório parceiro (`CLAUDE.md` §3) — a Fase 2 usa um texto provisório
-      sóbrio por e-mail, marcado no código (`packages/motor/src/mensagens.ts`)
+- [ ] Política de privacidade e DPA revisados por advogado
+- [ ] Condições do projeto-piloto
 
-## Fornecedores e canais
+## Fornecedores e integrações
 
-- [ ] BSP de WhatsApp: 360dialog, Gupshup, Twilio ou Zenvia
-- [ ] E-mail transacional: Resend ou SES
-- [ ] SMS: Zenvia ou Twilio
-- [ ] Carta com AR: serviço de carta registrada digital
-- [ ] Telefonia do console do analista (softphone com gravação)
-
-Enquanto não houver fornecedor + credenciais, os drivers da Fase 2
-(`packages/motor/src/drivers.ts`) mantêm todo envio em modo simulado, mesmo
-com `CANAIS_MODO=producao` — o motivo aparece no resumo do tick.
-
-- [ ] Chave Pix de recebimento por cliente (campo `pixChave` no cadastro): sem
-      ela, o portal e a 2ª via dizem "não cadastrada — em definição"
-- [ ] Emissão de boleto / linha digitável: sai do banco emissor do cliente —
-      integração bancária na Fase 3 (a 2ª via da Fase 2 informa isso)
+- [ ] BSP de WhatsApp (número de cada escritório)
+- [ ] E-mail transacional e SMS (domínio e remetente do escritório)
+- [ ] **Bancos homologados para emissão de boleto/Pix** na conta do credor ou
+      do escritório (a Sentinella nunca intermedia pagamento)
+- [ ] Carta com AR / cartório
+- [ ] Telefonia: softphone do console com gravação; avaliar integração com a
+      discadora do escritório
+- [ ] **Assinatura eletrônica** para notificações do advogado
+- [ ] Sistemas jurídicos a integrar `[Projuris, Astrea, Advbox, SAJ ADV,
+      Legal One — validar APIs]`
+- [ ] Enriquecimento de contatos via birô (fornecedor + base legal por carteira)
+- [ ] Negativação: convênio Serasa/Boa Vista/SPC do escritório ou do credor
+- [ ] Protesto: central eletrônica dos cartórios (procuração e acesso)
 
 ## Infraestrutura
 
-- [ ] Domínio próprio e e-mail de domínio próprio (não usar Gmail)
-- [ ] Deploy das aplicações da Fase 1: Vercel ou Cloudflare
-- [ ] Banco gerenciado (PostgreSQL)
+- [ ] Domínio próprio e e-mail de domínio próprio
+- [ ] Deploy (Vercel ou Cloudflare) e banco gerenciado (PostgreSQL)
 - [ ] Analytics com respeito à privacidade (Plausible ou Umami)
 - [ ] URL do LinkedIn (rodapé)
 
 ## Estado das superfícies
 
-- **Site (Webflow)** — já no posicionamento v2 (Sentinella Recebíveis), publicado em
-  https://eduardos-top-notch-site-488aab.webflow.io . Capturas reais do painel e do
-  portal entram no site quando a Fase 1 existir; renomear o subdomínio é ação manual
-  no painel do Webflow.
-- **Site Astro deste repositório (`src/`)** — ainda no posicionamento v1; será
-  substituído pelo `apps/site` (Next.js) na Fase 1 do v2. A chave `CHAVE_ENVIO`
-  (Web3Forms) do formulário v1 fica sem efeito.
-- **Painel do cliente, portal do lojista e console do analista** — Fases 1 e 2
-  entregues em `produto/`: telas navegáveis + motor de régua real sobre
-  PostgreSQL (importação por planilha, fila com conferência pré-envio, baixa
-  de pagamentos, portal transacional). Demo navegável em
-  https://claude.ai/artifact/AZcXJ7wAB4rgmXZAEWoP5v (o link só abre para
-  visitantes depois de compartilhado no menu Share do artifact). Fase 3
-  (conector de ERP, ligações com gravação, carta AR, fluxo de autorização no
-  painel, relatório PDF, régua editável do Max) por fazer.
+- **Pivô v3 em andamento.** O v3 (white label para escritórios) foi adotado em
+  02/10 como fonte de verdade; o v2 completo está preservado em `BRIEF-V2.md`.
+- **Site (Webflow)** — ainda no posicionamento v2 (cobrança para indústrias),
+  publicado em https://eduardos-top-notch-site-488aab.webflow.io . O pivô do
+  site para o v3 (§6.1: hero "Sua marca na frente...", seção white label,
+  conformidade, FAQ de escritórios, formulário novo, /white-label e
+  /conformidade) ainda não foi executado.
+- **Produto (`produto/`)** — implementação das Fases 1 e 2 do v2 (painel,
+  console, portal, motor de régua real sobre PostgreSQL). É a base de código
+  sobre a qual a Fase 1 do v3 será construída (hierarquia escritório → credor
+  → carteira → devedor, portais white label, console com troca de escritório).
+  Demo navegável (dados do v2): https://claude.ai/artifact/AZcXJ7wAB4rgmXZAEWoP5v
+- **Registro**: a decisão de 29/09 sobre lembretes D−20/D−5 do v2 está
+  documentada em `BRIEF-V2.md`; a régua do v3 é reancorada na entrada da
+  carteira (E+0…E+60) e a implementará no formato novo.
 
 ## Nota de vocabulário
 
-O brief proíbe "cobertura" (vocabulário de seguro): onde o assunto é horário da
-central, usar "central humana seg–sex/todos os dias, 8h–22h" ou "acompanhamento".
+Seguem proibidos: "seguro", "apólice", "cobertura", "garantia total", "100%",
+"revolucionário", "disruptivo". Novo no v3: **nada que pareça oferta de
+clientes ao escritório** ("trazemos credores", "indicamos carteiras") — é
+captação indireta, vedada pelo Código de Ética da OAB (`CLAUDE.md` §6.1).
