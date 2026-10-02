@@ -1,129 +1,158 @@
 'use client';
 
-// Devedores e maiores valores (§7.2b): os dez maiores fixos no topo + lista
-// completa de lojistas com filtros.
+// Devedores do escritório: busca, filtros e a lista paginada (o seed traz
+// ~2.000 por escritório, PF e PJ). O rating A–E é interno — devedor nunca vê.
 
-import { L } from '../../lib/raiz';
 import { useMemo, useState } from 'react';
+import { L } from '../../lib/raiz';
 import { moedaCurta } from '@sentinella/dados';
+import type { Devedor } from '@sentinella/dados';
 import { Carregando, useDados } from '../../lib/contexto';
-import { dezMaiores } from '../../lib/metricas';
-import { Secao, Selo } from '../../lib/ui';
+import { Selo } from '../../lib/ui';
 
-const FAIXAS = [
-  { id: 'todas', rotulo: 'qualquer atraso', min: 0, max: 1e9 },
-  { id: 'f1', rotulo: '1–15 dias', min: 1, max: 15 },
-  { id: 'f2', rotulo: '16–60 dias', min: 16, max: 60 },
-  { id: 'f3', rotulo: 'mais de 60', min: 61, max: 1e9 },
-];
+const PAGINA = 80;
 
 export default function Devedores() {
   const { dados } = useDados();
-  const [rating, setRating] = useState('todos');
-  const [faixa, setFaixa] = useState('todas');
-  const [soDevendo, setSoDevendo] = useState(true);
   const [busca, setBusca] = useState('');
+  const [carteiraId, setCarteiraId] = useState('todas');
+  const [tipo, setTipo] = useState('todos');
+  const [rating, setRating] = useState('todos');
+  const [situacao, setSituacao] = useState('todas');
+  const [limite, setLimite] = useState(PAGINA);
 
   const lista = useMemo(() => {
     if (!dados) return [];
-    const fx = FAIXAS.find((f) => f.id === faixa)!;
-    return dados.lojistas
-      .filter((l) => (rating === 'todos' ? true : l.rating === rating))
-      .filter((l) => (soDevendo ? l.valorVencido > 0 : true))
-      .filter((l) =>
-        faixa === 'todas' ? true : l.maiorAtrasoDias >= fx.min && l.maiorAtrasoDias <= fx.max,
-      )
-      .filter((l) => l.nome.toLowerCase().includes(busca.toLowerCase()))
-      .sort((a, b) => b.valorVencido - a.valorVencido);
-  }, [dados, rating, faixa, soDevendo, busca]);
+    const termo = busca.trim().toLowerCase();
+    const filtra = (d: Devedor) => {
+      if (carteiraId !== 'todas' && d.carteiraId !== carteiraId) return false;
+      if (tipo !== 'todos' && d.tipo !== tipo) return false;
+      if (rating !== 'todos' && d.rating !== rating) return false;
+      if (situacao === 'em aberto' && d.titulosAbertos === 0) return false;
+      if (situacao === 'regularizados' && d.titulosAbertos > 0) return false;
+      if (situacao === 'atenção' && !(d.canaisBloqueados.length > 0 || d.vulneravel)) return false;
+      if (termo && !`${d.nome} ${d.doc} ${d.cidade}`.toLowerCase().includes(termo)) return false;
+      return true;
+    };
+    return dados.devedores
+      .filter(filtra)
+      .sort((a, b) => b.valorAberto - a.valorAberto);
+  }, [dados, busca, carteiraId, tipo, rating, situacao]);
 
   if (!dados) return <Carregando />;
-  const top = dezMaiores(dados);
 
   return (
     <>
       <h1 className="fonte-titulo text-[22px] font-semibold">Devedores</h1>
 
-      <Secao titulo="Os dez maiores valores em atraso">
-        <div className="overflow-x-auto">
-          <table className="tab">
-            <thead>
-              <tr>
-                <th>#</th><th>Lojista</th><th className="num">Valor</th>
-                <th className="num">Dias de atraso</th><th>Rating</th><th>Etapa da régua</th>
-              </tr>
-            </thead>
-            <tbody>
-              {top.map(({ titulo, lojista }, i) => (
-                <tr key={titulo.id}>
-                  <td className="suave">{i + 1}</td>
-                  <td><L para={`devedores/ficha/?l=${lojista.id}`}>{lojista.nome}</L></td>
-                  <td className="num text-[15px] font-semibold">{moedaCurta(titulo.valor)}</td>
-                  <td className="num">{titulo.diasAtraso}</td>
-                  <td><Selo letra={lojista.rating} /></td>
-                  <td className="suave">{titulo.etapaAtual}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Secao>
+      <div className="mt-3 flex flex-wrap items-center gap-2.5 text-[13px]">
+        <input
+          type="search"
+          className="campo-select min-w-56 flex-1 md:max-w-xs"
+          placeholder="Buscar por nome, CPF/CNPJ ou cidade"
+          aria-label="Buscar devedor"
+          value={busca}
+          onChange={(e) => {
+            setBusca(e.target.value);
+            setLimite(PAGINA);
+          }}
+        />
+        <select className="campo-select" value={carteiraId} aria-label="Filtrar por carteira"
+          onChange={(e) => { setCarteiraId(e.target.value); setLimite(PAGINA); }}>
+          <option value="todas">Todas as carteiras</option>
+          {dados.carteiras.map((c) => (
+            <option key={c.id} value={c.id}>{c.nome}</option>
+          ))}
+        </select>
+        <select className="campo-select" value={tipo} aria-label="Filtrar por tipo"
+          onChange={(e) => { setTipo(e.target.value); setLimite(PAGINA); }}>
+          <option value="todos">PF e PJ</option>
+          <option value="PF">Pessoa física</option>
+          <option value="PJ">Pessoa jurídica</option>
+        </select>
+        <select className="campo-select" value={rating} aria-label="Filtrar por rating"
+          onChange={(e) => { setRating(e.target.value); setLimite(PAGINA); }}>
+          <option value="todos">Rating A–E</option>
+          {['A', 'B', 'C', 'D', 'E'].map((l) => (
+            <option key={l} value={l}>Rating {l}</option>
+          ))}
+        </select>
+        <select className="campo-select" value={situacao} aria-label="Filtrar por situação"
+          onChange={(e) => { setSituacao(e.target.value); setLimite(PAGINA); }}>
+          <option value="todas">Todas as situações</option>
+          <option value="em aberto">Com títulos em aberto</option>
+          <option value="regularizados">Regularizados</option>
+          <option value="atenção">Atenção (não contato / vulnerável)</option>
+        </select>
+        <span className="suave ml-auto">{lista.length.toLocaleString('pt-BR')} devedores</span>
+      </div>
 
-      <Secao titulo={`Todos os lojistas (${lista.length})`}>
-        <div className="mb-3 flex flex-wrap items-center gap-3 text-[13px]">
-          <input
-            className="campo-select"
-            placeholder="Buscar lojista"
-            value={busca}
-            onChange={(e) => setBusca(e.target.value)}
-            aria-label="Buscar lojista pelo nome"
-          />
-          <label className="flex items-center gap-1.5">
-            <span className="suave">Rating</span>
-            <select className="campo-select" value={rating} onChange={(e) => setRating(e.target.value)}>
-              <option value="todos">todos</option>
-              {['A', 'B', 'C', 'D', 'E'].map((r) => <option key={r}>{r}</option>)}
-            </select>
-          </label>
-          <label className="flex items-center gap-1.5">
-            <span className="suave">Atraso</span>
-            <select className="campo-select" value={faixa} onChange={(e) => setFaixa(e.target.value)}>
-              {FAIXAS.map((f) => <option key={f.id} value={f.id}>{f.rotulo}</option>)}
-            </select>
-          </label>
-          <label className="flex items-center gap-1.5">
-            <input type="checkbox" checked={soDevendo} onChange={(e) => setSoDevendo(e.target.checked)} />
-            só com valor vencido
-          </label>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="tab">
-            <thead>
-              <tr>
-                <th>Lojista</th><th>Cidade</th><th>Rating</th>
-                <th className="num">Títulos abertos</th><th className="num">Valor em aberto</th>
-                <th className="num">Valor vencido</th><th className="num">Maior atraso</th>
-              </tr>
-            </thead>
-            <tbody>
-              {lista.slice(0, 60).map((l) => (
-                <tr key={l.id}>
-                  <td><L para={`devedores/ficha/?l=${l.id}`}>{l.nome}</L></td>
-                  <td className="suave">{l.cidade}</td>
-                  <td><Selo letra={l.rating} /></td>
-                  <td className="num">{l.titulosAbertos}</td>
-                  <td className="num">{moedaCurta(l.valorAberto)}</td>
-                  <td className="num font-medium">{l.valorVencido ? moedaCurta(l.valorVencido) : '—'}</td>
-                  <td className="num">{l.maiorAtrasoDias ? `${l.maiorAtrasoDias} d` : '—'}</td>
+      <div className="cartao mt-3 overflow-x-auto">
+        <table className="tab">
+          <thead>
+            <tr>
+              <th>Devedor</th>
+              <th>Carteira</th>
+              <th>Rating</th>
+              <th className="num">Títulos abertos</th>
+              <th className="num">Em aberto</th>
+              <th className="num">Dias na carteira</th>
+              <th>Sinais</th>
+            </tr>
+          </thead>
+          <tbody>
+            {lista.slice(0, limite).map((d) => {
+              const carteira = dados.carteiras.find((c) => c.id === d.carteiraId);
+              return (
+                <tr key={d.id}>
+                  <td>
+                    <L para={`devedores/ficha/?d=${d.id}`} className="font-medium">
+                      {d.nome}
+                    </L>
+                    <div className="suave text-[12px]">
+                      {d.tipo} · {d.doc} · {d.cidade}
+                    </div>
+                  </td>
+                  <td className="max-w-44 truncate" title={carteira?.nome}>{carteira?.nome}</td>
+                  <td><Selo letra={d.rating} titulo={`Rating ${d.rating} · ${d.ratingTotal} pontos (interno)`} /></td>
+                  <td className="num">{d.titulosAbertos}</td>
+                  <td className="num">{d.valorAberto ? moedaCurta(d.valorAberto) : '—'}</td>
+                  <td className="num">{d.titulosAbertos ? d.diasDesdeEntrada : '—'}</td>
+                  <td>
+                    <span className="flex flex-wrap gap-1">
+                      {d.canaisBloqueados.length > 0 && (
+                        <span className="chip chip-sinal" title={`Pediu não contato: ${d.canaisBloqueados.join(', ')}`}>
+                          <span className="glifo" aria-hidden="true">⊘</span>
+                          não contatar: {d.canaisBloqueados.join(', ')}
+                        </span>
+                      )}
+                      {d.vulneravel && (
+                        <span className="chip chip-sinal" title="Declarou situação de vulnerabilidade (Lei 14.181)">
+                          <span className="glifo" aria-hidden="true">!</span>
+                          vulnerabilidade
+                        </span>
+                      )}
+                    </span>
+                  </td>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        {lista.length > 60 && (
-          <p className="suave mt-2 text-[12.5px]">Mostrando 60 de {lista.length} — refine os filtros.</p>
+              );
+            })}
+          </tbody>
+        </table>
+        {lista.length > limite && (
+          <div className="p-3 text-center">
+            <button type="button" className="botao botao-sec" onClick={() => setLimite(limite + PAGINA)}>
+              Mostrar mais {Math.min(PAGINA, lista.length - limite)} de{' '}
+              {(lista.length - limite).toLocaleString('pt-BR')}
+            </button>
+          </div>
         )}
-      </Secao>
+      </div>
+
+      <p className="nota-demo mt-3">
+        O rating é instrumento interno do escritório e do credor — nunca aparece para o devedor
+        (§6). Pedidos de não contato e declarações de vulnerabilidade entram como trava da régua.
+      </p>
     </>
   );
 }

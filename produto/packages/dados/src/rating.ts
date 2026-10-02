@@ -1,11 +1,16 @@
-// Rating A–E por lojista (CLAUDE.md §6) — recalculado sobre o histórico
-// disponível do seed (90 dias). Pesos: pontualidade 40, tempo de resposta 20,
-// promessas cumpridas 20, frequência de atraso 10, exceções geradas 10.
+// Rating A–E por devedor (CLAUDE.md §6) — interno do escritório e do credor;
+// NUNCA aparece para o devedor. Pesos: pontualidade 40, tempo de resposta 20,
+// promessas cumpridas 20, frequência de atraso 10, contestações geradas 10.
 // Faixas internas da Fase 1: A ≥ 85 · B ≥ 70 · C ≥ 50 · D ≥ 30 · E < 30.
-// Lojista com menos de 3 títulos de histórico entra como C (§6).
+// Devedor com menos de 3 títulos de histórico entra como C (§6).
+// No v3 a pontualidade mede os dias até REGULARIZAR desde a entrada na
+// carteira (ponderados pelo valor), divididos pelo fator abaixo para cair na
+// mesma curva de pontos.
 
 import { DetalheCriterio, Letra } from './tipos';
 import { pct } from './formato';
+
+export const FATOR_REGULARIZACAO = 2.6;
 
 export interface EntradaRating {
   titulosTotais: number;
@@ -32,7 +37,7 @@ export function calcularRating(e: EntradaRating): {
       novo: true,
       detalhe: [
         {
-          rotulo: 'Lojista novo',
+          rotulo: 'Devedor novo',
           peso: 100,
           valor: `${e.titulosTotais} título(s) de histórico`,
           pontos: 50,
@@ -53,7 +58,7 @@ export function calcularRating(e: EntradaRating): {
     {
       rotulo: 'Pontualidade',
       peso: 40,
-      valor: `${e.diasMediosAtrasoPonderado.toFixed(1).replace('.', ',')} dias médios de atraso (ponderado pelo valor)`,
+      valor: `${(e.diasMediosAtrasoPonderado * FATOR_REGULARIZACAO).toFixed(0)} dias, em média, até regularizar desde a entrada na carteira (ponderado pelo valor)`,
       pontos: Math.round(pPontualidade),
     },
     {
@@ -78,13 +83,13 @@ export function calcularRating(e: EntradaRating): {
       rotulo: 'Frequência de atraso',
       peso: 10,
       valor:
-        e.pctTitulosComAtraso >= 99.5
-          ? 'todos os títulos pagos após o vencimento'
-          : `${pct(e.pctTitulosComAtraso)} dos títulos pagos após o vencimento`,
+        e.pctTitulosComAtraso >= 79.5
+          ? 'nenhum título resolvido nos primeiros 30 dias de carteira'
+          : `${pct(Math.min(100, e.pctTitulosComAtraso * 1.25))} dos títulos sem solução após 30 dias de carteira`,
       pontos: Math.round(pFrequencia),
     },
     {
-      rotulo: 'Exceções geradas',
+      rotulo: 'Contestações e escalonamentos',
       peso: 10,
       valor: `${e.excecoesPorTitulo.toFixed(2).replace('.', ',')} contestações/escalonamentos por título`,
       pontos: Math.round(pExcecoes),

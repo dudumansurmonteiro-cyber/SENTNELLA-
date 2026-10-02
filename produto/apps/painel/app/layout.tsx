@@ -5,7 +5,7 @@ import { Casca } from '../lib/contexto';
 export const metadata: Metadata = {
   title: 'Painel Sentinella — demonstração com dados fictícios',
   description:
-    'Painel do cliente da Sentinella Recebíveis (Fase 1): carteira, devedores, eficiência por canal e etapa, operação do dia e console do analista — sobre dados de demonstração.',
+    'Painel do escritório na plataforma Sentinella (white label): carteiras por credor, devedores, eficiência da régua de entrada, pendências do advogado e console da operação — sobre dados de demonstração.',
 };
 
 export default function RaizLayout({ children }: { children: React.ReactNode }) {

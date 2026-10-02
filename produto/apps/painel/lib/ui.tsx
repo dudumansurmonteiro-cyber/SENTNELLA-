@@ -53,21 +53,19 @@ export function ChipAcao({ estado }: { estado: EstadoAcao }) {
 }
 
 const GLIFO_TITULO: Partial<Record<EstadoTitulo, string>> = {
-  'a vencer': '○',
-  vencido: '!',
+  'em cobrança': '○',
   'em negociação': '◔',
   acordo: '≡',
   pago: '✓',
-  protestado: '§',
   negativado: '§',
-  jurídico: '§',
+  protestado: '§',
+  judicial: '§',
   contestado: '?',
   cancelado: '–',
-  'fora da régua': '⊘',
 };
 
 export function ChipTitulo({ estado }: { estado: EstadoTitulo }) {
-  const sinal = ['contestado', 'fora da régua', 'em negociação'].includes(estado);
+  const sinal = ['contestado', 'em negociação'].includes(estado);
   const ok = estado === 'pago';
   return (
     <span className={`chip ${sinal ? 'chip-sinal' : ''} ${ok ? 'chip-ok' : ''}`}>

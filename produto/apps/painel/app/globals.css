@@ -26,6 +26,8 @@
     --ink-2: #a9b8b2;
     --line: #31413c;
     --line-soft: #24312d;
+    --primary: #7fb3ac;
+    --on-primary: #14211f;
     --link: #7fb3ac;
     --panel: #182722;
     --panel-row: #1d2e29;
@@ -116,9 +118,7 @@ a { color: var(--link); text-underline-offset: 3px; }
 .chip-ok { border-color: var(--primary); color: var(--link); }
 
 .barra { height: 8px; background: var(--panel-row); border-radius: 4px; overflow: hidden; }
-@media (prefers-color-scheme: dark) { .barra { background: #24312d; } }
 .barra > i { display: block; height: 100%; background: var(--primary); border-radius: 4px; }
-@media (prefers-color-scheme: dark) { .barra > i { background: #7fb3ac; } }
 
 .aba {
   padding: 9px 2px;

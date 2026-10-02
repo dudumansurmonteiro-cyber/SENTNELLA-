@@ -1,117 +1,168 @@
 'use client';
 
-// Ficha do lojista (§7.2b): títulos, contatos, promessas, acordos, exceções
-// e o rating explicado critério a critério (§6 / critério de aceite 3).
+// Ficha do devedor: títulos com a trilha completa de contatos, acordos,
+// documentos jurídicos, exceções e o rating explicado critério a critério
+// (reconstruído de ratingBase — o rating é interno e nunca vai ao devedor).
 
-import { L } from '../../../lib/raiz';
-import { Suspense } from 'react';
+import { Suspense, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { dataBr, moeda, moedaCurta } from '@sentinella/dados';
+import { L, useRaiz } from '../../../lib/raiz';
+import {
+  calcularRating, dataBr, expandirTrilha, moeda, moedaCurta,
+} from '@sentinella/dados';
+import type { Devedor, Titulo } from '@sentinella/dados';
 import { Carregando, useDados } from '../../../lib/contexto';
-import { ChipAcao, ChipTitulo, Secao, Selo } from '../../../lib/ui';
+import { ChipTitulo, Secao, Selo } from '../../../lib/ui';
+
+function ratingDe(d: Devedor) {
+  const [titulos, dias, horas, feitas, cumpridas, pctAtraso, exc] = d.ratingBase;
+  return calcularRating({
+    titulosTotais: titulos ?? 0,
+    diasMediosAtrasoPonderado: dias ?? 0,
+    horasMediasResposta: horas == null || horas < 0 ? null : horas,
+    promessasFeitas: feitas ?? 0,
+    promessasCumpridas: cumpridas ?? 0,
+    pctTitulosComAtraso: pctAtraso ?? 0,
+    excecoesPorTitulo: exc ?? 0,
+  });
+}
+
+function LinhaTitulo({ t, hoje }: { t: Titulo; hoje: string }) {
+  const [aberta, setAberta] = useState(false);
+  const passos = hoje ? expandirTrilha(t.trilha, hoje) : [];
+  return (
+    <>
+      <tr>
+        <td>
+          <button
+            type="button"
+            onClick={() => setAberta(!aberta)}
+            aria-expanded={aberta}
+            className="cursor-pointer font-medium"
+            style={{ color: 'var(--link)' }}
+          >
+            {aberta ? '▾' : '▸'} {t.numero}
+          </button>
+        </td>
+        <td className="num">{moeda(t.valorOriginal)}</td>
+        <td className="num">{moeda(t.valorAtualizado)}</td>
+        <td className="num">{dataBr(t.entradaCarteira)}</td>
+        <td className="num">{t.atrasoOriginal} d</td>
+        <td><ChipTitulo estado={t.estado} /></td>
+        <td>{t.etapaAtual}</td>
+      </tr>
+      {aberta && (
+        <tr>
+          <td colSpan={7} style={{ background: 'var(--panel-row)' }}>
+            <div className="px-2 py-2">
+              <b className="text-[12.5px]">Trilha de contatos (régua da entrada)</b>
+              {passos.length === 0 && <p className="suave text-[13px]">Sem contatos registrados.</p>}
+              <ul className="mt-1 space-y-1 text-[13px]">
+                {passos.map((p, i) => (
+                  <li key={i} className="flex flex-wrap items-baseline gap-x-2">
+                    <b className="w-12">{p.etapa}</b>
+                    <span className="suave w-16">{dataBr(p.data)}</span>
+                    <span className="w-20">{p.canal}</span>
+                    <span className={p.codigo === 'blq' ? 'sinal-txt' : undefined}>{p.resultado}</span>
+                  </li>
+                ))}
+              </ul>
+              {t.comunicacaoPreviaEm && (
+                <p className="suave mt-2 text-[12.5px]">
+                  Comunicação prévia de negativação enviada em {dataBr(t.comunicacaoPreviaEm)} com
+                  prova de envio (CDC, art. 43, §2º) — negativação só após o prazo.
+                </p>
+              )}
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
+  );
+}
 
 function Conteudo() {
-  const { dados } = useDados();
+  const { dados, hoje } = useDados();
   const params = useSearchParams();
-  const id = params.get('l');
+  const raiz = useRaiz();
+  const id = params.get('d');
   if (!dados) return <Carregando />;
-  const lojista = dados.lojistas.find((l) => l.id === id);
-  if (!lojista) {
+  const dev = dados.devedores.find((x) => x.id === id);
+  if (!dev) {
     return (
       <p className="py-8">
-        Lojista não encontrado. <L para="devedores/">Voltar aos devedores</L>
+        Devedor não encontrado. <L para="devedores/">Voltar aos devedores</L>
       </p>
     );
   }
 
+  const carteira = dados.carteiras.find((c) => c.id === dev.carteiraId)!;
+  const credor = dados.credores.find((c) => c.id === dev.credorId)!;
   const titulos = dados.titulos
-    .filter((t) => t.lojistaId === lojista.id)
-    .sort((a, b) => b.vencimento.localeCompare(a.vencimento));
-  const acoes = dados.acoes
-    .filter((a) => a.lojistaId === lojista.id)
-    .sort((a, b) => b.data.localeCompare(a.data))
-    .slice(0, 14);
-  const promessas = dados.promessas.filter((p) => p.lojistaId === lojista.id);
-  const acordos = dados.acordos.filter((a) => a.lojistaId === lojista.id);
-  const excecoes = dados.excecoes.filter((e) => e.lojistaId === lojista.id);
+    .filter((t) => t.devedorId === dev.id)
+    .sort((a, b) => b.entradaCarteira.localeCompare(a.entradaCarteira));
+  const acordos = dados.acordos.filter((a) => a.devedorId === dev.id);
+  const documentos = dados.documentos
+    .filter((d) => d.devedorId === dev.id)
+    .sort((a, b) => b.geradoEm.localeCompare(a.geradoEm));
+  const excecoes = dados.excecoes.filter((e) => e.devedorId === dev.id);
+  const rating = ratingDe(dev);
+  const urlPortal =
+    dev.token && raiz
+      ? `${raiz.slice(0, raiz.lastIndexOf('painel/'))}portal/d/?t=${dev.token}`
+      : null;
 
   return (
     <>
       <p className="text-[13px]"><L para="devedores/">← Devedores</L></p>
-      <div className="mt-1 flex flex-wrap items-center gap-3">
-        <h1 className="fonte-titulo text-[22px] font-semibold">{lojista.nome}</h1>
-        <Selo letra={lojista.rating} />
-        <span className="suave text-[13px]">
-          {lojista.cidade} · CNPJ fictício {lojista.cnpj} · contato: {lojista.contatoNome} ({lojista.contatoPapel})
-        </span>
+      <div className="mt-2 flex flex-wrap items-center gap-3">
+        <h1 className="fonte-titulo text-[22px] font-semibold">{dev.nome}</h1>
+        <Selo letra={dev.rating} titulo={`Rating ${dev.rating} (interno)`} />
+        {dev.canaisBloqueados.length > 0 && (
+          <span className="chip chip-sinal">
+            <span className="glifo" aria-hidden="true">⊘</span>
+            pediu não contato: {dev.canaisBloqueados.join(', ')}
+          </span>
+        )}
+        {dev.vulneravel && (
+          <span className="chip chip-sinal">
+            <span className="glifo" aria-hidden="true">!</span>
+            vulnerabilidade declarada (Lei 14.181)
+          </span>
+        )}
       </div>
       <p className="suave mt-1 text-[13.5px]">
-        {lojista.titulosAbertos} títulos abertos · {moedaCurta(lojista.valorAberto)} em aberto ·{' '}
-        {moedaCurta(lojista.valorVencido)} vencidos
+        {dev.tipo === 'PF' ? 'Pessoa física' : 'Pessoa jurídica'} · {dev.doc} · {dev.cidade} ·
+        carteira “{carteira.nome}” de {credor.nome}
+      </p>
+      <p className="mt-1 text-[13.5px]">
+        <b>{dev.titulosAbertos}</b> título(s) em aberto somando <b>{moedaCurta(dev.valorAberto)}</b>
+        {dev.titulosAbertos > 0 && <> · há {dev.diasDesdeEntrada} dias na carteira</>}
+        {urlPortal && (
+          <>
+            {' '}· <a href={urlPortal}>espaço do devedor (como ele vê) ↗</a>
+          </>
+        )}
       </p>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Secao titulo={`Por que o rating é ${lojista.rating} (${lojista.ratingTotal}/100)`}>
-          {lojista.ratingNovo && (
-            <p className="nota-demo mb-2">
-              Lojista com menos de três títulos de histórico entra como C até formar histórico.
-            </p>
-          )}
-          <table className="tab">
-            <thead>
-              <tr><th>Critério</th><th className="num">Peso</th><th>Medido</th><th className="num">Pontos</th></tr>
-            </thead>
-            <tbody>
-              {lojista.ratingDetalhe.map((c) => (
-                <tr key={c.rotulo}>
-                  <td className="font-medium">{c.rotulo}</td>
-                  <td className="num suave">{c.peso}%</td>
-                  <td className="suave">{c.valor}</td>
-                  <td className="num">{c.pontos}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <p className="suave mt-2 text-[12.5px]">O rating nunca é mostrado ao lojista.</p>
-        </Secao>
-
-        <Secao titulo="Histórico de contatos (mais recentes)">
-          <table className="tab">
-            <thead><tr><th>Data</th><th>Etapa</th><th>Canal</th><th>Situação</th><th>Resultado</th></tr></thead>
-            <tbody>
-              {acoes.map((a) => (
-                <tr key={a.id}>
-                  <td className="suave">{dataBr(a.data)}</td>
-                  <td>{a.etapa} <span className="suave">({a.quem})</span></td>
-                  <td className="suave">{a.canal}</td>
-                  <td><ChipAcao estado={a.estado} /></td>
-                  <td className="suave">{a.resultado ?? '—'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </Secao>
-      </div>
-
-      <Secao titulo={`Títulos (${titulos.length})`}>
+      <Secao titulo={`Rating ${rating.letra} · ${rating.total} pontos — interno, nunca mostrado ao devedor`}>
         <div className="overflow-x-auto">
           <table className="tab">
             <thead>
               <tr>
-                <th>Número</th><th className="num">Valor</th><th>Vencimento</th>
-                <th className="num">Dias de atraso</th><th>Situação</th><th>Etapa</th><th>Pago em</th>
+                <th>Critério</th>
+                <th className="num">Peso</th>
+                <th>Leitura no período</th>
+                <th className="num">Pontos</th>
               </tr>
             </thead>
             <tbody>
-              {titulos.map((t) => (
-                <tr key={t.id}>
-                  <td className="suave">{t.numero}{t.antecipado && <span className="chip chip-sinal ml-2">antecipada · protesto até D+25</span>}</td>
-                  <td className="num font-medium">{moeda(t.valor)}</td>
-                  <td>{dataBr(t.vencimento)}</td>
-                  <td className="num">{t.diasAtraso || '—'}</td>
-                  <td><ChipTitulo estado={t.estado} /></td>
-                  <td className="suave">{t.etapaAtual}</td>
-                  <td className="suave">{t.pagoEm ? dataBr(t.pagoEm) : '—'}</td>
+              {rating.detalhe.map((c) => (
+                <tr key={c.rotulo}>
+                  <td>{c.rotulo}</td>
+                  <td className="num">{c.peso}%</td>
+                  <td>{c.valor}</td>
+                  <td className="num">{c.pontos}</td>
                 </tr>
               ))}
             </tbody>
@@ -119,36 +170,82 @@ function Conteudo() {
         </div>
       </Secao>
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Secao titulo={`Promessas (${promessas.length})`}>
-          {promessas.length === 0 && <p className="suave text-[13px]">Nenhuma no período.</p>}
-          {promessas.map((p) => (
-            <p key={p.id} className="py-0.5 text-[13.5px]">
-              para {dataBr(p.para)} —{' '}
-              {p.cumprida === null ? <span className="suave">a vencer</span>
-                : p.cumprida ? <span style={{ color: 'var(--link)' }}>cumprida ✓</span>
-                : <span className="sinal-txt">não cumprida ✕</span>}
-            </p>
-          ))}
-        </Secao>
+      <Secao titulo={`Títulos (${titulos.length})`}>
+        <div className="overflow-x-auto">
+          <table className="tab">
+            <thead>
+              <tr>
+                <th>Número</th>
+                <th className="num">Original</th>
+                <th className="num">Atualizado</th>
+                <th className="num">Entrada</th>
+                <th className="num">Atraso na entrada</th>
+                <th>Situação</th>
+                <th>Etapa</th>
+              </tr>
+            </thead>
+            <tbody>
+              {titulos.map((t) => <LinhaTitulo key={t.id} t={t} hoje={hoje} />)}
+            </tbody>
+          </table>
+        </div>
+        {carteira.multaPct == null && (
+          <p className="nota-demo mt-3">
+            Carteira sem encargos cadastrados: valores cobrados sem multa nem juros — e as
+            mensagens não os mencionam.
+          </p>
+        )}
+      </Secao>
+
+      {acordos.length > 0 && (
         <Secao titulo={`Acordos (${acordos.length})`}>
-          {acordos.length === 0 && <p className="suave text-[13px]">Nenhum vigente.</p>}
-          {acordos.map((a) => (
-            <p key={a.id} className="py-0.5 text-[13.5px]">
-              {moedaCurta(a.valorTotal)} em {a.parcelas}x · {a.parcelasPagas} pagas ·{' '}
-              {a.status === 'atrasado' ? <span className="sinal-txt">{a.status}</span> : a.status}
-            </p>
-          ))}
+          <ul className="space-y-2 text-[13.5px]">
+            {acordos.map((a) => (
+              <li key={a.id} className="flex flex-wrap items-baseline gap-x-3">
+                <b>{moeda(a.valorTotal)}</b>
+                <span className="suave">
+                  em {a.parcelas}x · custo total com {moedaCurta(a.jurosEmbutidos)} de encargos,
+                  mostrado antes do aceite
+                </span>
+                <span>{a.parcelasPagas}/{a.parcelas} parcelas pagas</span>
+                <span className="chip">{a.status}</span>
+                <span className="suave">origem: {a.origem} · {dataBr(a.criadoEm)}</span>
+              </li>
+            ))}
+          </ul>
         </Secao>
+      )}
+
+      {documentos.length > 0 && (
+        <Secao titulo={`Documentos jurídicos (${documentos.length})`}>
+          <ul className="space-y-1.5 text-[13.5px]">
+            {documentos.map((doc) => (
+              <li key={doc.id} className="flex flex-wrap items-baseline gap-x-3">
+                <b>{doc.tipo}{doc.subtipo ? ` (${doc.subtipo})` : ''}</b>
+                <span className={`chip ${doc.status === 'a assinar' || doc.status === 'aguarda autorização' ? 'chip-sinal' : ''}`}>
+                  {doc.status}
+                </span>
+                <span className="suave">{dataBr(doc.geradoEm)} · {moedaCurta(doc.valor)}</span>
+                {doc.assinadoPor && <span className="suave">assinado por {doc.assinadoPor}</span>}
+              </li>
+            ))}
+          </ul>
+        </Secao>
+      )}
+
+      {excecoes.length > 0 && (
         <Secao titulo={`Exceções (${excecoes.length})`}>
-          {excecoes.length === 0 && <p className="suave text-[13px]">Nenhuma registrada.</p>}
-          {excecoes.map((e) => (
-            <p key={e.id} className="py-0.5 text-[13.5px]">
-              {e.motivo} — <span className={e.estado === 'aberta' ? 'sinal-txt' : 'suave'}>{e.estado}</span>
-            </p>
-          ))}
+          <ul className="space-y-1.5 text-[13.5px]">
+            {excecoes.map((e) => (
+              <li key={e.id} className="flex flex-wrap items-baseline gap-x-3">
+                <span>{e.motivo}</span>
+                <span className="chip">{e.estado}</span>
+                {e.resolucao && <span className="suave">{e.resolucao}</span>}
+              </li>
+            ))}
+          </ul>
         </Secao>
-      </div>
+      )}
     </>
   );
 }

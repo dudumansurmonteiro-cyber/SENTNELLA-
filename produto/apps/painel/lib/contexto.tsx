@@ -1,52 +1,52 @@
 'use client';
 
-// Contexto de dados do painel: carrega o índice e o arquivo do cliente
-// selecionado (dados de demonstração gerados pelo seed).
+// Contexto de dados do painel v3: carrega o índice e o arquivo do escritório
+// selecionado (hidratado do formato de transporte), aplica a MARCA do
+// escritório como tema (white label) e monta a casca comum — cabeçalho com
+// troca de escritório na demonstração, abas do painel e rodapé.
 
 import { usePathname } from 'next/navigation';
 import { L, raizApp } from './raiz';
 import {
   createContext, useCallback, useContext, useEffect, useMemo, useState,
 } from 'react';
-import type { DadosCliente, IndiceSeed } from '@sentinella/dados';
+import { hidratarDump } from '@sentinella/dados';
+import type { DadosEscritorio, IndiceSeed } from '@sentinella/dados';
 
 interface Ctx {
   indice: IndiceSeed | null;
-  dados: DadosCliente | null;
-  clienteId: string;
-  trocarCliente: (id: string) => void;
+  dados: DadosEscritorio | null;
+  escritorioId: string;
+  trocarEscritorio: (id: string) => void;
+  hoje: string;
   carregando: boolean;
 }
 
 const Contexto = createContext<Ctx>({
   indice: null,
   dados: null,
-  clienteId: 'c1',
-  trocarCliente: () => {},
+  escritorioId: 'e1',
+  trocarEscritorio: () => {},
+  hoje: '',
   carregando: true,
 });
 
 export const useDados = () => useContext(Contexto);
 
-const cacheClientes = new Map<string, DadosCliente>();
+const cache = new Map<string, DadosEscritorio>();
 
-// Console do analista: carrega os três clientes de uma vez.
-export async function carregarTodos(ids: string[]): Promise<DadosCliente[]> {
-  return Promise.all(
-    ids.map(async (id) => {
-      const emCache = cacheClientes.get(id);
-      if (emCache) return emCache;
-      const d: DadosCliente = await fetch(`${raizApp()}dados/${id}.json`).then((r) => r.json());
-      cacheClientes.set(id, d);
-      return d;
-    }),
-  );
+export async function carregarEscritorio(id: string): Promise<DadosEscritorio> {
+  const emCache = cache.get(id);
+  if (emCache) return emCache;
+  const d = hidratarDump(await fetch(`${raizApp()}dados/${id}.json`).then((r) => r.json()));
+  cache.set(id, d);
+  return d;
 }
 
 export function Casca({ children }: { children: React.ReactNode }) {
   const [indice, setIndice] = useState<IndiceSeed | null>(null);
-  const [clienteId, setClienteId] = useState('c1');
-  const [dados, setDados] = useState<DadosCliente | null>(null);
+  const [escritorioId, setEscritorioId] = useState('e1');
+  const [dados, setDados] = useState<DadosEscritorio | null>(null);
   const [carregando, setCarregando] = useState(true);
   const rota = usePathname() ?? '/';
 
@@ -59,17 +59,9 @@ export function Casca({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let ativo = true;
-    const emCache = cacheClientes.get(clienteId);
-    if (emCache) {
-      setDados(emCache);
-      setCarregando(false);
-      return;
-    }
-    setCarregando(true);
-    fetch(`${raizApp()}dados/${clienteId}.json`)
-      .then((r) => r.json())
-      .then((d: DadosCliente) => {
-        cacheClientes.set(clienteId, d);
+    setCarregando(!cache.has(escritorioId));
+    carregarEscritorio(escritorioId)
+      .then((d) => {
         if (ativo) {
           setDados(d);
           setCarregando(false);
@@ -79,21 +71,24 @@ export function Casca({ children }: { children: React.ReactNode }) {
     return () => {
       ativo = false;
     };
-  }, [clienteId]);
+  }, [escritorioId]);
 
-  const trocarCliente = useCallback((id: string) => setClienteId(id), []);
+  const trocarEscritorio = useCallback((id: string) => setEscritorioId(id), []);
 
   const valor = useMemo(
-    () => ({ indice, dados, clienteId, trocarCliente, carregando }),
-    [indice, dados, clienteId, trocarCliente, carregando],
+    () => ({
+      indice, dados, escritorioId, trocarEscritorio,
+      hoje: indice?.hoje ?? '', carregando,
+    }),
+    [indice, dados, escritorioId, trocarEscritorio, carregando],
   );
 
   const noConsole = rota.includes('/console');
+  const marca = dados?.escritorio.marca;
 
-  // O painel pode estar montado em qualquer caminho, então a aba ativa é
-  // detectada pelo segmento da rota, não pelo prefixo.
   const abas = [
     { para: '', chave: '', rotulo: 'Visão geral' },
+    { para: 'carteiras/', chave: 'carteiras', rotulo: 'Carteiras' },
     { para: 'devedores/', chave: 'devedores', rotulo: 'Devedores' },
     { para: 'eficiencia/', chave: 'eficiencia', rotulo: 'Eficiência' },
     { para: 'hoje/', chave: 'hoje', rotulo: 'Hoje' },
@@ -102,34 +97,57 @@ export function Casca({ children }: { children: React.ReactNode }) {
 
   const ativa = (chave: string) =>
     chave === ''
-      ? !['devedores', 'eficiencia', 'hoje', 'config', 'console'].some((s) => rota.includes(`/${s}`))
+      ? !['carteiras', 'devedores', 'eficiencia', 'hoje', 'config', 'console'].some((s) =>
+          rota.includes(`/${s}`))
       : rota.includes(`/${chave}`);
 
   return (
     <Contexto.Provider value={valor}>
+      {/* White label: fora do console, a cor de marca do escritório vira o
+          tema do painel (clara no modo escuro). */}
+      {!noConsole && marca && (
+        <style>{`
+          :root{--primary:${marca.corPrimaria};--link:${marca.corPrimaria};--ok:${marca.corPrimaria}}
+          @media (prefers-color-scheme:dark){:root{--primary:${marca.corClara};--link:${marca.corClara};--ok:${marca.corClara};--on-primary:#14211f}}
+        `}</style>
+      )}
       <header style={{ borderBottom: '1px solid var(--line-soft)', background: 'var(--panel)' }}>
-        <div className="container-p flex flex-wrap items-center gap-x-6 gap-y-2 py-2.5">
-          <span className="fonte-titulo flex items-center gap-2 text-lg font-semibold">
-            <svg width="15" height="20" viewBox="24 0 152 200" aria-hidden="true">
-              <path fill="var(--primary)" d="M46 10H154Q166 10 166 22V98Q166 144 100 190Q34 144 34 98V22Q34 10 46 10Z" />
-              <path fill="var(--bg)" d="M61 92Q100 59 139 92Q100 125 61 92Z" />
-              <circle fill="var(--primary)" cx="100" cy="92" r="14" />
-            </svg>
-            Sentinella
-            <span className="suave text-sm font-normal">{noConsole ? 'console do analista' : 'painel do cliente'}</span>
-          </span>
-          {!noConsole && indice && (
+        <div className="container-p flex flex-wrap items-center gap-x-5 gap-y-2 py-2.5">
+          {noConsole ? (
+            <span className="fonte-titulo flex items-center gap-2 text-lg font-semibold">
+              <svg width="15" height="20" viewBox="24 0 152 200" aria-hidden="true">
+                <path fill="var(--primary)" d="M46 10H154Q166 10 166 22V98Q166 144 100 190Q34 144 34 98V22Q34 10 46 10Z" />
+                <path fill="var(--bg)" d="M61 92Q100 59 139 92Q100 125 61 92Z" />
+                <circle fill="var(--primary)" cx="100" cy="92" r="14" />
+              </svg>
+              Sentinella
+              <span className="suave text-sm font-normal">console da operação</span>
+            </span>
+          ) : (
+            <span className="fonte-titulo flex items-center gap-2.5 text-lg font-semibold">
+              <span
+                aria-hidden="true"
+                className="grid h-8 w-8 shrink-0 place-items-center rounded-md text-[13px] font-semibold"
+                style={{ background: 'var(--primary)', color: 'var(--on-primary)' }}
+              >
+                {marca?.iniciais ?? '··'}
+              </span>
+              {marca?.nomeExibicao ?? 'Painel'}
+              <span className="suave text-sm font-normal">painel do escritório</span>
+            </span>
+          )}
+          {indice && (
             <label className="flex items-center gap-2 text-[13px]">
-              <span className="suave">Cliente</span>
+              <span className="suave">{noConsole ? 'Escritório ativo' : 'Escritório'}</span>
               <select
                 className="campo-select"
-                value={clienteId}
-                onChange={(e) => trocarCliente(e.target.value)}
-                aria-label="Trocar cliente de demonstração"
+                value={escritorioId}
+                onChange={(e) => trocarEscritorio(e.target.value)}
+                aria-label="Trocar escritório de demonstração"
               >
-                {indice.clientes.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.nome} · {c.plano}
+                {indice.escritorios.map((e) => (
+                  <option key={e.id} value={e.id}>
+                    {e.marca.nomeExibicao} · {e.plano}
                   </option>
                 ))}
               </select>
@@ -137,7 +155,7 @@ export function Casca({ children }: { children: React.ReactNode }) {
           )}
           <span className="chip ml-auto">demonstração · dados fictícios</span>
           <L para={noConsole ? '' : 'console/'} className="text-[13px]">
-            {noConsole ? 'ir para o painel do cliente' : 'ir para o console do analista'}
+            {noConsole ? 'ir para o painel do escritório' : 'console da operação (Sentinella)'}
           </L>
         </div>
         {!noConsole && (
@@ -149,13 +167,36 @@ export function Casca({ children }: { children: React.ReactNode }) {
             ))}
           </nav>
         )}
+        {/* No console, a faixa com a cor do escritório ativo lembra em nome
+            de quem toda conversa sai (§7: white label também na operação). */}
+        {noConsole && marca && (
+          <div style={{ background: marca.corPrimaria, color: '#ffffff' }}>
+            <div className="container-p flex flex-wrap items-center gap-x-3 gap-y-1 py-1.5 text-[12.5px]">
+              <span
+                aria-hidden="true"
+                className="grid h-5 w-5 place-items-center rounded text-[10.5px] font-semibold"
+                style={{ background: '#ffffff', color: marca.corPrimaria }}
+              >
+                {marca.iniciais}
+              </span>
+              <b>{marca.nomeExibicao}</b>
+              <span style={{ opacity: 0.85 }}>
+                · plano {dados?.escritorio.plano} · toda conversa sai em nome deste escritório
+                {dados?.escritorio.slaMin != null
+                  ? ` · SLA ${dados.escritorio.slaMin} min`
+                  : ' · operação da equipe do próprio escritório'}
+              </span>
+            </div>
+          </div>
+        )}
       </header>
       <main className="container-p pb-16 pt-6">{children}</main>
       <footer style={{ borderTop: '1px solid var(--line-soft)' }}>
         <div className="container-p suave py-4 text-[12.5px]">
-          Demonstração da Sentinella Recebíveis com dados e empresas fictícios, gerados pelo
-          motor de régua da Fase 2. Nenhuma mensagem real é enviada; nesta demonstração
-          publicada, as ações não persistem.
+          Demonstração da Sentinella com escritórios, credores e devedores fictícios (90 dias de
+          histórico gerados pela régua de entrada). Nenhuma mensagem real é enviada; nesta
+          demonstração publicada, as ações não persistem. Plataforma operada pela Sentinella;
+          a cobrança é sempre em nome do escritório.
         </div>
       </footer>
     </Contexto.Provider>

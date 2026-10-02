@@ -22,7 +22,7 @@ import {
   nomePessoaCompleta, token,
 } from './nomes';
 import { planoDaRegua, BLOQUEIOS, PRAZO_COMUNICACAO_PREVIA_DIAS, PassoPlano } from './regua';
-import { calcularRating } from './rating';
+import { calcularRating, FATOR_REGULARIZACAO } from './rating';
 import { addDias, difDias, faixaDoAtraso, faixaDaCasa, FAIXAS_ENTRADA, FAIXAS_CASA } from './formato';
 import { enxugarDump, hidratarDump, canonico } from './transporte';
 
@@ -868,7 +868,7 @@ function gerarEscritorio(esc: Escritorio): DadosEscritorio {
 
     const base = [
       doDev.length,
-      Math.round(((somaDias / somaValor) / 2.6) * 10) / 10,
+      Math.round(((somaDias / somaValor) / FATOR_REGULARIZACAO) * 10) / 10,
       perfil.respondeH ?? -1,
       promFeitas,
       promCumpridas,
