@@ -1,0 +1,111 @@
+---
+// Painel de monitoramento simulado do hero (CLAUDE.md, seção 6).
+// Sequência única de ~8s no carregamento; com prefers-reduced-motion,
+// mostra o estado final direto.
+---
+<div class="painel" id="painel" aria-label="Simulação do painel de monitoramento da Sentinella">
+  <div class="painel-topo">
+    <strong>Central Sentinella</strong>
+    <span>agora · plantão 8h–22h</span>
+  </div>
+  <div class="painel-lista">
+    <ul class="painel-fluxo" id="painelFluxo">
+      <li class="painel-item">
+        <span class="estado" aria-hidden="true"></span>
+        <div class="texto">
+          <div class="resumo">Pedido #4821 — prazo de entrega informado</div>
+          <div class="meta">atendimento · resolvido pela IA</div>
+        </div>
+      </li>
+      <li class="painel-item">
+        <span class="estado" aria-hidden="true"></span>
+        <div class="texto">
+          <div class="resumo">Segunda via de boleto enviada</div>
+          <div class="meta">cobrança · resolvido pela IA</div>
+        </div>
+      </li>
+      <li class="painel-item">
+        <span class="estado" aria-hidden="true"></span>
+        <div class="texto">
+          <div class="resumo">Agendamento confirmado para quinta, 14h</div>
+          <div class="meta">triagem · resolvido pela IA</div>
+        </div>
+      </li>
+      <li class="painel-item" id="itemExcecao">
+        <span class="estado" aria-hidden="true"></span>
+        <div class="texto">
+          <div class="resumo">Cliente pediu para falar com humano</div>
+          <div class="meta meta-sinal" id="metaExcecao">atendimento · em análise</div>
+          <div class="meta intervencao">Marina assumiu · 14h32</div>
+          <div class="meta"><span class="resolvido">resolvido · 2 min</span></div>
+        </div>
+      </li>
+      <li class="painel-item">
+        <span class="estado" aria-hidden="true"></span>
+        <div class="texto">
+          <div class="resumo">Dúvida sobre parcelamento respondida</div>
+          <div class="meta">vendas · resolvido pela IA</div>
+        </div>
+      </li>
+      <li class="painel-item">
+        <span class="estado" aria-hidden="true"></span>
+        <div class="texto">
+          <div class="resumo">Troca iniciada — etiqueta emitida</div>
+          <div class="meta">pós-venda · resolvido pela IA</div>
+        </div>
+      </li>
+      <li class="painel-item">
+        <span class="estado" aria-hidden="true"></span>
+        <div class="texto">
+          <div class="resumo">Leads da manhã classificados e distribuídos</div>
+          <div class="meta">processos · resolvido pela IA</div>
+        </div>
+      </li>
+      <li class="painel-item">
+        <span class="estado" aria-hidden="true"></span>
+        <div class="texto">
+          <div class="resumo">Uso de IA da equipe verificado — prompts dentro do padrão</div>
+          <div class="meta">uso interno · sem exceções</div>
+        </div>
+      </li>
+    </ul>
+  </div>
+  <div class="painel-legenda">
+    <span><span class="ponto" style="background: var(--ok)"></span>acompanhado pela IA</span>
+    <span><span class="ponto" style="background: var(--signal)"></span>um humano entrou aqui</span>
+  </div>
+</div>
+
+<script>
+  const reduzido = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const item = document.getElementById('itemExcecao');
+  const meta = document.getElementById('metaExcecao');
+  const fluxo = document.getElementById('painelFluxo');
+
+  function estadoFinal() {
+    if (!item || !meta) return;
+    item.classList.add('encerrada');
+    item.classList.remove('excecao');
+    meta.textContent = 'atendimento · analista interveio';
+    meta.classList.remove('meta-sinal');
+  }
+
+  if (reduzido || !item || !meta || !fluxo) {
+    estadoFinal();
+  } else {
+    // rolagem lenta da coluna, depois a sequência da exceção
+    setTimeout(() => { fluxo.style.transform = 'translateY(-28px)'; }, 900);
+    setTimeout(() => { fluxo.style.transform = 'translateY(-56px)'; }, 2100);
+    setTimeout(() => {
+      item.classList.add('excecao');
+      meta.textContent = 'atendimento · exceção aberta';
+    }, 3200);
+    setTimeout(() => {
+      item.classList.add('assumida');
+      meta.textContent = 'atendimento · analista atuando';
+    }, 4700);
+    setTimeout(() => {
+      estadoFinal();
+    }, 7900);
+  }
+</script>

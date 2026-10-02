@@ -1,0 +1,4 @@
+﻿cnpj;razao_social;cidade;contato_nome;contato_papel;whatsapp;email;telefone;nao_cobrar
+00.000.001/0001-17;Comercial Exemplo Ltda;Arapongas;Ana Almeida;financeiro;(00) 91234-5678;financeiro@comercial-exemplo.exemplo.invalid;(00) 3123-4567;não
+00.000.002/0001-24;Bazar Modelo ME;Londrina;Bruno Barros;sócio;(00) 92345-6789;contato@bazar-modelo.exemplo.invalid;;não
+00.000.003/0001-31;Casa Fictícia EPP;Maringá;Carla Cardoso;financeiro;;carla@casa-ficticia.exemplo.invalid;(00) 3345-6789;sim

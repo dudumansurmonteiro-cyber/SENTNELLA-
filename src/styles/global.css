@@ -1,0 +1,401 @@
+@import "tailwindcss";
+
+/* ============================================================
+   Sentinella — sistema de design (ver CLAUDE.md, seção 6)
+   Claro por padrão; escuro automático via prefers-color-scheme.
+   ============================================================ */
+
+:root {
+  --bg: #F4F6F5;
+  --ink: #14211F;
+  /* #C6CFCB é reservado a linhas e bordas; texto secundário usa tom
+     mais escuro para manter contraste AA */
+  --ink-2: #44534E;
+  --line: #C6CFCB;
+  --line-soft: #DDE3E0;
+  --primary: #0E4A45;
+  --on-primary: #F4F6F5;
+  --link: #0E4A45;
+  --panel: #FFFFFF;
+  --panel-row: #F0F3F1;
+  --signal: #D99A00;
+  --signal-text: #8A6200;
+  --signal-bg: rgba(217, 154, 0, 0.14);
+  --ok: #0E4A45;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14211F;
+    --ink: #F4F6F5;
+    --ink-2: #A9B8B2;
+    --line: #31413C;
+    --line-soft: #24312D;
+    --primary: #0E4A45;
+    --on-primary: #F4F6F5;
+    --link: #7FB3AC;
+    --panel: #182722;
+    --panel-row: #1D2E29;
+    --signal: #D99A00;
+    --signal-text: #E0A82D;
+    --signal-bg: rgba(217, 154, 0, 0.16);
+    --ok: #7FB3AC;
+  }
+}
+
+/* ---------- base ---------- */
+html {
+  scroll-behavior: smooth;
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 16px;
+  line-height: 1.55;
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+}
+@media (min-width: 768px) {
+  body { font-size: 17px; }
+}
+
+h1, h2, h3 {
+  font-family: "Bricolage Grotesque", "IBM Plex Sans", system-ui, sans-serif;
+  font-weight: 600;
+  line-height: 1.12;
+  margin: 0;
+  text-wrap: balance;
+}
+h1 { font-size: clamp(2rem, 4.6vw, 3.4rem); letter-spacing: -0.02em; }
+h2 { font-size: clamp(1.55rem, 3vw, 2.25rem); letter-spacing: -0.015em; font-weight: 600; }
+h3 { font-size: 1.2rem; font-weight: 500; letter-spacing: -0.005em; }
+
+p { margin: 0; max-width: 66ch; }
+a { color: var(--link); text-underline-offset: 3px; }
+a:hover { text-decoration-thickness: 2px; }
+
+:focus-visible {
+  outline: 2px solid var(--link);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+::selection { background: var(--primary); color: var(--on-primary); }
+
+/* ---------- estrutura ---------- */
+.container {
+  width: min(1200px, 100% - 3rem);
+  margin-inline: auto;
+}
+.section {
+  padding-block: clamp(4rem, 9vw, 7.5rem) 0;
+}
+.section > .container > h2 { max-width: 24ch; }
+.section-intro {
+  margin-top: 1.1rem;
+  color: var(--ink-2);
+}
+
+/* ---------- botões ---------- */
+.btn {
+  display: inline-block;
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 500;
+  padding: 0.8rem 1.6rem;
+  border-radius: 4px;
+  border: 1.5px solid var(--primary);
+  background: var(--primary);
+  color: var(--on-primary);
+  text-decoration: none;
+  cursor: pointer;
+}
+.btn:hover { background: #0B3B37; border-color: #0B3B37; }
+.btn-secundario {
+  background: transparent;
+  color: var(--link);
+}
+.btn-secundario:hover { background: rgba(14, 74, 69, 0.08); }
+@media (prefers-color-scheme: dark) {
+  .btn:hover { background: #12615A; border-color: #12615A; }
+  .btn-secundario { border-color: var(--link); }
+  .btn-secundario:hover { background: rgba(127, 179, 172, 0.12); }
+}
+
+/* ---------- tabelas ---------- */
+.tabela-wrap { overflow-x: auto; margin-top: 2.2rem; }
+table.tabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95em;
+  min-width: 560px;
+}
+table.tabela caption { text-align: left; }
+table.tabela th {
+  font-family: "Bricolage Grotesque", sans-serif;
+  font-weight: 500;
+  text-align: left;
+  padding: 0.7rem 0.9rem;
+  border-bottom: 2px solid var(--ink);
+}
+table.tabela td {
+  padding: 0.75rem 0.9rem;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+table.tabela td:first-child { font-weight: 500; }
+.sob-consulta { color: var(--ink-2); }
+
+/* ---------- listas ---------- */
+ul.lista {
+  margin: 1.2rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.65rem;
+  max-width: 66ch;
+}
+ul.lista li {
+  padding-left: 1.15rem;
+  position: relative;
+}
+ul.lista li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.62em;
+  width: 7px;
+  height: 2px;
+  background: var(--primary);
+}
+@media (prefers-color-scheme: dark) {
+  ul.lista li::before { background: var(--link); }
+}
+
+/* ---------- etapas (linha do tempo) ---------- */
+.etapas {
+  margin-top: 2.6rem;
+  display: grid;
+  gap: 2.2rem;
+}
+@media (min-width: 900px) {
+  .etapas { grid-template-columns: repeat(3, 1fr); gap: 2.5rem; position: relative; }
+  .etapas::before {
+    content: "";
+    position: absolute;
+    top: 17px;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: var(--line);
+  }
+}
+.etapa { position: relative; }
+.etapa .num {
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: var(--on-primary);
+  font-family: "Bricolage Grotesque", sans-serif;
+  font-weight: 600;
+  position: relative;
+  z-index: 1;
+}
+.etapa h3 { margin-top: 0.9rem; }
+.etapa .quando { color: var(--ink-2); font-size: 0.9em; }
+.etapa p { margin-top: 0.7rem; font-size: 0.97em; }
+
+/* ---------- fluxo de exceção (diagrama) ---------- */
+.fluxo {
+  margin-top: 2.4rem;
+  display: grid;
+  gap: 0;
+  max-width: 320px;
+}
+.fluxo .no {
+  border: 1.5px solid var(--line);
+  border-radius: 6px;
+  padding: 0.55rem 0.9rem;
+  font-size: 0.92em;
+  background: var(--panel);
+  width: fit-content;
+}
+.fluxo .no.sinal {
+  border-color: var(--signal);
+  background: var(--signal-bg);
+  color: var(--ink);
+}
+.fluxo .no.sinal .marca { color: var(--signal-text); font-weight: 500; }
+.fluxo .liga {
+  width: 1.5px;
+  height: 1.1rem;
+  background: var(--line);
+  margin-left: 1.4rem;
+}
+@media (min-width: 900px) {
+  .fluxo {
+    max-width: none;
+    grid-auto-flow: column;
+    align-items: center;
+    justify-content: start;
+  }
+  .fluxo .liga { width: 2rem; height: 1.5px; margin-left: 0; }
+}
+
+/* ---------- painel simulado do hero ---------- */
+.painel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  font-size: 0.85rem;
+}
+.painel-topo {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.7rem 1rem;
+  border-bottom: 1px solid var(--line-soft);
+  color: var(--ink-2);
+}
+.painel-topo strong { color: var(--ink); font-weight: 500; }
+.painel-lista {
+  height: 330px;
+  overflow: hidden;
+  position: relative;
+}
+.painel-fluxo {
+  list-style: none;
+  margin: 0;
+  padding: 0.4rem 0;
+  transition: transform 1.1s ease;
+}
+.painel-item {
+  display: flex;
+  gap: 0.7rem;
+  align-items: flex-start;
+  padding: 0.62rem 1rem;
+  border-bottom: 1px solid var(--line-soft);
+}
+.painel-item:last-child { border-bottom: none; }
+.painel-item .estado {
+  flex: none;
+  margin-top: 0.42em;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ok);
+}
+.painel-item .texto { min-width: 0; }
+.painel-item .resumo { color: var(--ink); }
+.painel-item .meta { color: var(--ink-2); font-size: 0.86em; margin-top: 1px; }
+.painel-item.excecao { background: var(--signal-bg); }
+.painel-item.excecao .estado { background: var(--signal); }
+.painel-item.excecao .meta-sinal { color: var(--signal-text); font-weight: 500; }
+.painel-item .intervencao,
+.painel-item .resolvido { display: none; }
+.painel-item.assumida .intervencao { display: block; }
+.painel-item.encerrada .intervencao { display: block; }
+.painel-item.encerrada .resolvido { display: inline; }
+.painel-item.encerrada { background: transparent; }
+.painel-item.encerrada .estado { background: var(--ok); }
+.painel-legenda {
+  display: flex;
+  gap: 1.2rem;
+  padding: 0.6rem 1rem;
+  border-top: 1px solid var(--line-soft);
+  color: var(--ink-2);
+  font-size: 0.82em;
+}
+.painel-legenda .ponto {
+  display: inline-block;
+  width: 8px; height: 8px; border-radius: 50%;
+  margin-right: 0.4rem;
+  vertical-align: 0;
+}
+
+/* ---------- FAQ ---------- */
+.faq { margin-top: 2rem; max-width: 70ch; border-top: 1px solid var(--line); }
+.faq details { border-bottom: 1px solid var(--line); }
+.faq summary {
+  cursor: pointer;
+  padding: 1rem 0.2rem;
+  font-weight: 500;
+  font-family: "Bricolage Grotesque", sans-serif;
+  list-style-position: outside;
+}
+.faq details p { padding: 0 0.2rem 1.1rem; color: var(--ink-2); }
+
+/* ---------- formulário ---------- */
+form.formulario {
+  margin-top: 2.2rem;
+  display: grid;
+  gap: 1.1rem;
+  max-width: 560px;
+}
+.campo { display: grid; gap: 0.35rem; }
+.campo label { font-weight: 500; font-size: 0.95em; }
+.campo input,
+.campo select {
+  font: inherit;
+  color: var(--ink);
+  background: var(--panel);
+  border: 1.5px solid var(--line);
+  border-radius: 4px;
+  padding: 0.65rem 0.8rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+.campo input:focus-visible,
+.campo select:focus-visible {
+  outline: 2px solid var(--link);
+  outline-offset: 1px;
+  border-color: var(--link);
+}
+.form-aviso { color: var(--ink-2); font-size: 0.9em; }
+.form-ok {
+  border-left: 3px solid var(--primary);
+  padding: 0.6rem 1rem;
+  font-weight: 500;
+}
+.form-erro {
+  border-left: 3px solid var(--signal);
+  padding: 0.6rem 1rem;
+}
+.honeypot {
+  position: absolute !important;
+  left: -9999px !important;
+  width: 1px; height: 1px;
+  overflow: hidden;
+}
+@media (max-width: 767px) {
+  form.formulario { margin-inline: auto; }
+}
+
+/* ---------- utilitários ---------- */
+.texto-2 { color: var(--ink-2); }
+.marca-sinal { color: var(--signal-text); font-weight: 500; }
+.nota {
+  margin-top: 1.4rem;
+  border-left: 3px solid var(--primary);
+  padding: 0.15rem 0 0.15rem 1rem;
+  max-width: 62ch;
+}
+.pulo {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  background: var(--primary);
+  color: var(--on-primary);
+  padding: 0.6rem 1rem;
+  z-index: 100;
+}
+.pulo:focus { left: 0.5rem; top: 0.5rem; }

@@ -1,0 +1,264 @@
+// Modelo de dados da Sentinella Recebíveis (CLAUDE.md §8).
+// Multi-tenant: toda tabela de negócio carrega clienteId.
+// Estados em pt-BR (strings validadas na aplicação, uniões em @sentinella/dados).
+// Valores monetários em centavos (Int) para precisão.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Cliente {
+  id                        String   @id
+  nome                      String
+  plano                     String // Básico | Avançado | Max
+  cidade                    String
+  setor                     String
+  erp                       String
+  erpIntegrado              Boolean  @default(false)
+  canais                    String[] // ordem de preferência
+  multaPct                  Float? // §12: sem cadastro → mensagem não menciona multa
+  jurosMesPct               Float?
+  alcadaDescontoMaxPct      Float
+  alcadaParcelasMax         Int
+  alcadaPrazoMaxDias        Int
+  alcadaValorSempreAnalista Int // centavos
+  valorLimiteLigacao        Int // centavos
+  analistaNomeado           String?
+  pixChave                  String? // §12: sem cadastro, o portal não inventa chave
+  criadoEm                  DateTime @default(now())
+
+  lojistas      Lojista[]
+  titulos       Titulo[]
+  acoes         AcaoCobranca[]
+  mensagens     Mensagem[]
+  excecoes      Excecao[]
+  acordos       Acordo[]
+  autorizacoes  Autorizacao[]
+  promessas     Promessa[]
+  pagamentosInf PagamentoInformado[]
+  auditoria     RegistroAuditoria[]
+}
+
+model Lojista {
+  id                 String   @id @default(cuid())
+  clienteId          String
+  cliente            Cliente  @relation(fields: [clienteId], references: [id])
+  nome               String
+  cidade             String   @default("")
+  cnpj               String
+  contatoNome        String   @default("")
+  contatoPapel       String   @default("financeiro") // financeiro | sócio
+  whatsapp           String   @default("") // contatos da empresa devedora (LGPD §3)
+  email              String   @default("")
+  telefone           String   @default("")
+  token              String   @unique // acesso do portal por link protegido
+  naoCobrar          Boolean  @default(false) // lista de bloqueio comercial
+  horasRespostaMedia Float?
+  ratingLetra        String? // A–E; nunca exposto ao lojista
+  ratingTotal        Int?
+  ratingDetalhe      Json?
+  ratingNovo         Boolean  @default(true)
+  atualizadoEm       DateTime @updatedAt
+
+  titulos       Titulo[]
+  acoes         AcaoCobranca[]
+  mensagens     Mensagem[]
+  excecoes      Excecao[]
+  acordos       Acordo[]
+  autorizacoes  Autorizacao[]
+  promessas     Promessa[]
+  pagamentosInf PagamentoInformado[]
+
+  @@unique([clienteId, cnpj])
+  @@index([clienteId])
+}
+
+model Titulo {
+  id                 String    @id @default(cuid())
+  clienteId          String
+  cliente            Cliente   @relation(fields: [clienteId], references: [id])
+  lojistaId          String
+  lojista            Lojista   @relation(fields: [lojistaId], references: [id])
+  numero             String
+  valorCentavos      Int
+  emissao            DateTime  @db.Date
+  vencimento         DateTime  @db.Date
+  antecipado         Boolean   @default(false) // Lei 5.474/68: notificação D+15, protesto até D+25
+  estado             String    @default("a vencer")
+  pagoEm             DateTime? @db.Date
+  valorPagoCentavos  Int?
+  origem             String    @default("csv") // csv | erp
+  criadoEm           DateTime  @default(now())
+
+  acoes         AcaoCobranca[]
+  acordoTitulos AcordoTitulo[]
+  excecoes      Excecao[]
+  autorizacoes  Autorizacao[]
+  promessas     Promessa[]
+  pagamentosInf PagamentoInformado[]
+
+  @@unique([clienteId, numero])
+  @@index([clienteId, estado])
+  @@index([clienteId, vencimento])
+}
+
+// A "fila" da régua: ações agendadas no banco, processadas pelo tick
+// (cron gerenciado — opção prevista no brief §11 no lugar de BullMQ/Redis).
+model AcaoCobranca {
+  id                  String    @id @default(cuid())
+  clienteId           String
+  cliente             Cliente   @relation(fields: [clienteId], references: [id])
+  tituloId            String
+  titulo              Titulo    @relation(fields: [tituloId], references: [id])
+  lojistaId           String
+  lojista             Lojista   @relation(fields: [lojistaId], references: [id])
+  etapa               String // D−3 · D0 · D+3 · D+7 · D+10 · D+15 · bloqueio · D+30 · D+45 · jurídico
+  canal               String
+  quem                String // IA | analista | sistema
+  descricao           String
+  dataProgramada      DateTime  @db.Date
+  tentativa           Int       @default(1)
+  estado              String    @default("agendada")
+  resultado           String?
+  mensagemRenderizada String?
+  motivoBloqueio      String?
+  executadaEm         DateTime?
+
+  @@unique([tituloId, etapa, canal, tentativa]) // idempotência do tick
+  @@index([clienteId, dataProgramada, estado])
+}
+
+model Mensagem {
+  id        String   @id @default(cuid())
+  clienteId String
+  cliente   Cliente  @relation(fields: [clienteId], references: [id])
+  lojistaId String
+  lojista   Lojista  @relation(fields: [lojistaId], references: [id])
+  tituloId  String?
+  acaoId    String?
+  excecaoId String?
+  canal     String
+  de        String // IA | analista | lojista | sistema
+  texto     String
+  entrega   String? // simulada | enviada | falhou
+  em        DateTime @default(now())
+
+  @@index([clienteId, lojistaId, em])
+  @@index([excecaoId])
+}
+
+model Excecao {
+  id                     String    @id @default(cuid())
+  clienteId              String
+  cliente                Cliente   @relation(fields: [clienteId], references: [id])
+  lojistaId              String
+  lojista                Lojista   @relation(fields: [lojistaId], references: [id])
+  tituloId               String?
+  titulo                 Titulo?   @relation(fields: [tituloId], references: [id])
+  motivo                 String
+  estado                 String    @default("aberta") // aberta | em atendimento | resolvida | devolvida ao cliente
+  slaMin                 Int
+  valorEnvolvidoCentavos Int       @default(0)
+  abertaEm               DateTime  @default(now())
+  assumidaPor            String?
+  assumidaEm             DateTime?
+  causa                  String?
+  resolucao              String?
+  regraSugerida          String?
+
+  @@index([clienteId, estado])
+}
+
+model Acordo {
+  id                 String         @id @default(cuid())
+  clienteId          String
+  cliente            Cliente        @relation(fields: [clienteId], references: [id])
+  lojistaId          String
+  lojista            Lojista        @relation(fields: [lojistaId], references: [id])
+  valorTotalCentavos Int
+  parcelas           Int
+  parcelasPagas      Int            @default(0)
+  status             String         @default("em dia") // em dia | atrasado | quitado
+  origem             String // portal | analista
+  criadoEm           DateTime       @default(now())
+  titulos            AcordoTitulo[]
+
+  @@index([clienteId, status])
+}
+
+model AcordoTitulo {
+  acordoId String
+  acordo   Acordo @relation(fields: [acordoId], references: [id])
+  tituloId String @unique
+  titulo   Titulo @relation(fields: [tituloId], references: [id])
+
+  @@id([acordoId, tituloId])
+}
+
+model Autorizacao {
+  id            String    @id @default(cuid())
+  clienteId     String
+  cliente       Cliente   @relation(fields: [clienteId], references: [id])
+  lojistaId     String
+  lojista       Lojista   @relation(fields: [lojistaId], references: [id])
+  tituloId      String
+  titulo        Titulo    @relation(fields: [tituloId], references: [id])
+  tipo          String // protesto | negativação | bloqueio de pedidos
+  valorCentavos Int
+  pedidoEm      DateTime  @default(now())
+  status        String    @default("pendente") // pendente | aprovada
+  aprovadaEm    DateTime?
+
+  @@index([clienteId, status])
+}
+
+model Promessa {
+  id        String   @id @default(cuid())
+  clienteId String
+  cliente   Cliente  @relation(fields: [clienteId], references: [id])
+  lojistaId String
+  lojista   Lojista  @relation(fields: [lojistaId], references: [id])
+  tituloId  String
+  titulo    Titulo   @relation(fields: [tituloId], references: [id])
+  para      DateTime @db.Date
+  cumprida  Boolean? // null = ainda no futuro
+  origem    String // ligação | portal
+  criadaEm  DateTime @default(now())
+
+  @@index([clienteId, para])
+}
+
+model PagamentoInformado {
+  id          String   @id @default(cuid())
+  clienteId   String
+  cliente     Cliente  @relation(fields: [clienteId], references: [id])
+  lojistaId   String
+  lojista     Lojista  @relation(fields: [lojistaId], references: [id])
+  tituloId    String
+  titulo      Titulo   @relation(fields: [tituloId], references: [id])
+  observacao  String?
+  conferido   Boolean  @default(false)
+  informadoEm DateTime @default(now())
+}
+
+// Trilha de auditoria (§8): toda mudança de estado, com autor.
+model RegistroAuditoria {
+  id         String   @id @default(cuid())
+  clienteId  String
+  cliente    Cliente  @relation(fields: [clienteId], references: [id])
+  entidade   String // titulo | acao | excecao | acordo | autorizacao | lojista | promessa
+  entidadeId String
+  de         String?
+  para       String
+  autor      String // IA | analista | cliente | lojista | sistema
+  detalhe    String?
+  em         DateTime @default(now())
+
+  @@index([clienteId, em])
+  @@index([entidade, entidadeId])
+}
