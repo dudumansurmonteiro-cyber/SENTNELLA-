@@ -387,6 +387,8 @@ export interface EntradaPortalDevedor {
   acordos: { valorTotal: number; parcelas: number; parcelasPagas: number; status: string }[];
   alcada: { parcelasMax: number; descontoMaxPct: number };
   simulacoes: SimulacaoAcordo[]; // opções dentro da alçada, com custo total
+  // Fase 2 (API viva): canais que o devedor pediu para não usar (§3).
+  canaisBloqueados?: string[];
 }
 
 export interface EntradaPortalCredor {

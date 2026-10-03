@@ -8,3 +8,4 @@ apps/portal/public/dados/
 dados-exemplo/
 .env
 pub/
+apps/servidor/dados/

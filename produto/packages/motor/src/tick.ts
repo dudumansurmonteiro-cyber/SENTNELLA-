@@ -1,45 +1,45 @@
-// O motor de régua real (Fase 2 — §11): um "tick" por dia processa a fila de
-// ações no banco. É idempotente — rodar duas vezes no mesmo dia não duplica
-// nada (chave única por título+etapa+canal+tentativa) — e cada envio passa
-// antes pela conferência contra os dados importados; divergência bloqueia a
-// mensagem e abre exceção para o analista (§5).
+// O motor de régua v3: um "tick" por dia processa a fila sobre a régua
+// ANCORADA NA ENTRADA (§4), com as travas da seção 3 aplicadas de verdade:
+// contato só com o próprio devedor, canal bloqueado a pedido vira exceção,
+// contestação pausa, negativação só com comunicação prévia registrada e
+// prazo cumprido, notificação só sai assinada pelo advogado, ligação só na
+// janela permitida. Idempotente (chave única título+etapa+canal+tentativa);
+// toda mensagem passa pela conferência antes de sair e registra a MARCA
+// ATIVA (em nome de qual escritório saiu).
 
 import { db, auditar } from '@sentinella/db';
-import type { Cliente, Lojista, Titulo } from '@sentinella/db';
+import type { Carteira, Credor, Devedor, Escritorio, Titulo } from '@sentinella/db';
+import { PRAZO_COMUNICACAO_PREVIA_DIAS, BLOQUEIOS, faixaDoAtraso } from '@sentinella/dados';
 import {
   addDias, difDias, deIso, paraIso, podeLigarNoDia, proximoDiaDeLigacao, diasDeAtrasoEm,
 } from './datas';
-import { passosDaRegua, ESTADOS_NA_REGUA } from './passos';
+import { passosDaRegua, ESTADOS_NA_REGUA, ESTADOS_TERMINAIS } from './passos';
 import {
-  calcularEncargos, textoDaMensagem, destinoParaCanal, type ContextoMensagem,
+  calcularEncargos, textoDaMensagem, destinoParaCanal, tipoDeTexto, type ContextoMensagem,
 } from './mensagens';
 import { conferirMensagem } from './conferencia';
 import { escolherDriver } from './drivers';
 
-const ESTADOS_TERMINAIS = [
-  'pago', 'cancelado', 'contestado', 'acordo', 'fora da régua',
-  'protestado', 'negativado', 'jurídico',
-];
-
-export type Renderizador = (etapa: string, canal: string, ctx: ContextoMensagem) => string;
+export type Renderizador = (tipo: string, canal: string, ctx: ContextoMensagem) => string;
 
 export interface OpcoesTick {
   hoje: string;
   renderizador?: Renderizador; // injetável nos testes da conferência
-  apenasClientes?: string[]; // limita o tick a alguns clientes (testes)
+  apenasEscritorios?: string[]; // limita o tick (testes; isolamento de tenant)
 }
 
 export interface ResumoTick {
   hoje: string;
-  titulosVencidos: number;
-  foraDaRegua: number;
   acoesAgendadas: number;
   mensagensEnviadas: number;
   mensagensBloqueadas: number;
+  bloqueiosConformidade: number; // travas da seção 3 que agiram
   ligacoesNaAgenda: number;
   ligacoesAdiadas: number;
-  autorizacoesCriadas: number;
-  pendentesJuridico: number;
+  previasEnviadas: number;
+  notificacoesParaAssinar: number;
+  medidasAguardandoAutorizacao: number;
+  dossiesGerados: number;
   promessasAvaliadas: number;
   acoesCanceladas: number;
   avisosCanais: string[];
@@ -48,89 +48,75 @@ export interface ResumoTick {
 const urlPortal = () => process.env.PORTAL_URL ?? 'http://localhost:3000';
 
 export function montarContexto(
-  cliente: Cliente,
-  lojista: Lojista,
+  escritorio: Escritorio,
+  credor: Credor,
+  carteira: Carteira,
+  devedor: Devedor,
   titulo: Titulo,
   hoje: string,
 ): ContextoMensagem {
   const vencimentoIso = paraIso(titulo.vencimento);
   const diasAtraso = diasDeAtrasoEm(vencimentoIso, hoje);
   return {
-    industria: cliente.nome.replace(' (fictícia)', ''),
-    contatoNome: lojista.contatoNome || lojista.nome,
+    escritorio: escritorio.marcaNome,
+    oab: escritorio.oab,
+    credor: credor.nome,
+    devedorNome: devedor.nome,
+    tratamento: devedor.tipo === 'PF' ? devedor.nome.split(' ')[0] : devedor.nome,
     numero: titulo.numero,
     valorCentavos: titulo.valorCentavos,
     vencimentoIso,
-    diasAtraso,
-    encargos: calcularEncargos(titulo.valorCentavos, diasAtraso, cliente.multaPct, cliente.jurosMesPct),
-    multaCadastrada: cliente.multaPct != null,
-    linkPortal: `${urlPortal()}/l/?t=${lojista.token}`,
-    parcelasMax: cliente.alcadaParcelasMax,
+    diasAtrasoDoVencimento: diasAtraso,
+    encargos: calcularEncargos(titulo.valorCentavos, diasAtraso, carteira.multaPct, carteira.jurosMesPct),
+    multaCadastrada: carteira.multaPct != null,
+    linkPortal: `${urlPortal()}/d/?t=${devedor.token}`,
+    parcelasMax: carteira.parcelasMax,
+    tom: faixaDoAtraso(titulo.atrasoOriginal) === 'até 30' ? 'lembrete' : 'regularização',
   };
+}
+
+async function abrirExcecao(
+  escritorio: Escritorio,
+  devedor: Devedor,
+  tituloId: string | null,
+  motivo: string,
+  valorCentavos: number,
+) {
+  const excecao = await db.excecao.create({
+    data: {
+      escritorioId: escritorio.id, devedorId: devedor.id, tituloId,
+      motivo, slaMin: escritorio.slaMin, valorEnvolvidoCentavos: valorCentavos,
+    },
+  });
+  await auditar(escritorio.id, 'excecao', excecao.id, null, 'aberta', 'sistema', motivo);
+  return excecao;
 }
 
 export async function executarTick(opcoes: OpcoesTick): Promise<ResumoTick> {
   const { hoje } = opcoes;
   const renderizar = opcoes.renderizador ?? textoDaMensagem;
   const resumo: ResumoTick = {
-    hoje, titulosVencidos: 0, foraDaRegua: 0, acoesAgendadas: 0,
-    mensagensEnviadas: 0, mensagensBloqueadas: 0, ligacoesNaAgenda: 0,
-    ligacoesAdiadas: 0, autorizacoesCriadas: 0, pendentesJuridico: 0,
-    promessasAvaliadas: 0, acoesCanceladas: 0, avisosCanais: [],
+    hoje, acoesAgendadas: 0, mensagensEnviadas: 0, mensagensBloqueadas: 0,
+    bloqueiosConformidade: 0, ligacoesNaAgenda: 0, ligacoesAdiadas: 0,
+    previasEnviadas: 0, notificacoesParaAssinar: 0, medidasAguardandoAutorizacao: 0,
+    dossiesGerados: 0, promessasAvaliadas: 0, acoesCanceladas: 0, avisosCanais: [],
   };
   const avisos = new Set<string>();
-  const escopo = opcoes.apenasClientes?.length
-    ? { clienteId: { in: opcoes.apenasClientes } }
+  const escopo = opcoes.apenasEscritorios?.length
+    ? { escritorioId: { in: opcoes.apenasEscritorios } }
     : {};
 
-  const clientes = await db.cliente.findMany({
-    where: opcoes.apenasClientes?.length ? { id: { in: opcoes.apenasClientes } } : {},
+  const escritorios = await db.escritorio.findMany({
+    where: opcoes.apenasEscritorios?.length ? { id: { in: opcoes.apenasEscritorios } } : {},
     orderBy: { id: 'asc' },
   });
 
-  // ---- 1) a vencer → vencido -------------------------------------------------
-  for (const cliente of clientes) {
-    const vencendo = await db.titulo.findMany({
-      where: { clienteId: cliente.id, estado: 'a vencer', vencimento: { lt: deIso(hoje) } },
-      select: { id: true },
-    });
-    if (vencendo.length) {
-      const ids = vencendo.map((t) => t.id);
-      await db.titulo.updateMany({ where: { id: { in: ids } }, data: { estado: 'vencido' } });
-      await db.registroAuditoria.createMany({
-        data: ids.map((id) => ({
-          clienteId: cliente.id, entidade: 'titulo', entidadeId: id,
-          de: 'a vencer', para: 'vencido', autor: 'sistema' as const,
-        })),
-      });
-      resumo.titulosVencidos += ids.length;
-    }
-
-    // ---- 2) Básico: depois do D+15, o título sai da régua (§3) ---------------
-    if (cliente.plano === 'Básico') {
-      const fora = await db.titulo.findMany({
-        where: { clienteId: cliente.id, estado: 'vencido', vencimento: { lt: deIso(addDias(hoje, -15)) } },
-        select: { id: true },
-      });
-      if (fora.length) {
-        const ids = fora.map((t) => t.id);
-        await db.titulo.updateMany({ where: { id: { in: ids } }, data: { estado: 'fora da régua' } });
-        await db.registroAuditoria.createMany({
-          data: ids.map((id) => ({
-            clienteId: cliente.id, entidade: 'titulo', entidadeId: id,
-            de: 'vencido', para: 'fora da régua', autor: 'sistema' as const,
-            detalhe: 'plano Básico — a régua termina no D+15',
-          })),
-        });
-        resumo.foraDaRegua += ids.length;
-      }
-    }
-
-    // ---- 3) ações agendadas de títulos que saíram da régua são canceladas ----
+  for (const escritorio of escritorios) {
+    // ---- 1) ações agendadas de títulos que saíram da régua são canceladas ----
     const orfas = await db.acaoCobranca.findMany({
       where: {
-        clienteId: cliente.id, estado: 'agendada',
-        titulo: { estado: { in: ESTADOS_TERMINAIS } },
+        escritorioId: escritorio.id, estado: 'agendada',
+        titulo: { estado: { in: [...ESTADOS_TERMINAIS] } },
       },
       select: { id: true, titulo: { select: { estado: true } } },
     });
@@ -141,7 +127,7 @@ export async function executarTick(opcoes: OpcoesTick): Promise<ResumoTick> {
       });
       await db.registroAuditoria.createMany({
         data: orfas.map((a) => ({
-          clienteId: cliente.id, entidade: 'acao', entidadeId: a.id,
+          escritorioId: escritorio.id, entidade: 'acao', entidadeId: a.id,
           de: 'agendada', para: 'cancelada', autor: 'sistema' as const,
           detalhe: `título em estado "${a.titulo.estado}"`,
         })),
@@ -149,80 +135,91 @@ export async function executarTick(opcoes: OpcoesTick): Promise<ResumoTick> {
       resumo.acoesCanceladas += orfas.length;
     }
 
-    // ---- 4) agendamento (idempotente pela chave única) -----------------------
-    const titulos = await db.titulo.findMany({
-      where: {
-        clienteId: cliente.id, estado: { in: [...ESTADOS_NA_REGUA] },
-        lojista: { naoCobrar: false },
-      },
-      orderBy: { numero: 'asc' },
-    });
-    const existentes = await db.acaoCobranca.findMany({
-      where: { clienteId: cliente.id, tituloId: { in: titulos.map((t) => t.id) } },
-      select: { tituloId: true, etapa: true, canal: true, tentativa: true },
-    });
-    const chaves = new Set(existentes.map((a) => `${a.tituloId}|${a.etapa}|${a.canal}|${a.tentativa}`));
+    // ---- 2) agendamento pela régua da ENTRADA (idempotente) -------------------
+    const carteiras = await db.carteira.findMany({ where: { escritorioId: escritorio.id } });
+    for (const carteira of carteiras) {
+      const titulos = await db.titulo.findMany({
+        where: {
+          carteiraId: carteira.id, estado: { in: [...ESTADOS_NA_REGUA] },
+          devedor: { naoCobrar: false, naoContatar: false },
+        },
+        orderBy: { numero: 'asc' },
+      });
+      if (!titulos.length) continue;
+      const existentes = await db.acaoCobranca.findMany({
+        where: { carteiraId: carteira.id, tituloId: { in: titulos.map((t) => t.id) } },
+        select: { tituloId: true, etapa: true, canal: true, tentativa: true },
+      });
+      const chaves = new Set(existentes.map((a) => `${a.tituloId}|${a.etapa}|${a.canal}|${a.tentativa}`));
 
-    const novas: {
-      clienteId: string; tituloId: string; lojistaId: string; etapa: string;
-      canal: string; quem: string; descricao: string; dataProgramada: Date; tentativa: number;
-    }[] = [];
-    for (const titulo of titulos) {
-      const vencimentoIso = paraIso(titulo.vencimento);
-      const passos = passosDaRegua(cliente, titulo);
-      // Catch-up: título importado já em atraso entra na etapa em que deveria
-      // estar (a mais recente vencida), sem disparar as anteriores.
-      let atrasadaMaisRecente: (typeof passos)[number] | null = null;
-      for (const passo of passos) {
-        const dataPasso = addDias(vencimentoIso, passo.off);
-        if (difDias(dataPasso, hoje) < 0) {
-          if (passo.off >= 3 && !chaves.has(`${titulo.id}|${passo.etapa}|${passo.canal}|1`))
-            atrasadaMaisRecente = passo;
-          continue;
-        }
-        if (difDias(dataPasso, hoje) > 3) continue; // horizonte de agendamento
-        const chave = `${titulo.id}|${passo.etapa}|${passo.canal}|1`;
-        if (chaves.has(chave)) continue;
-        chaves.add(chave);
-        const data = passo.canal === 'ligação' && !podeLigarNoDia(dataPasso)
-          ? proximoDiaDeLigacao(dataPasso)
-          : dataPasso;
-        novas.push({
-          clienteId: cliente.id, tituloId: titulo.id, lojistaId: titulo.lojistaId,
-          etapa: passo.etapa, canal: passo.canal, quem: passo.quem,
-          descricao: passo.descricao, dataProgramada: deIso(data), tentativa: 1,
-        });
-      }
-      if (atrasadaMaisRecente) {
-        const chave = `${titulo.id}|${atrasadaMaisRecente.etapa}|${atrasadaMaisRecente.canal}|1`;
-        if (!chaves.has(chave)) {
+      const novas: {
+        escritorioId: string; carteiraId: string; tituloId: string; devedorId: string;
+        etapa: string; canal: string; quem: string; tipo: string; descricao: string;
+        dataProgramada: Date; tentativa: number; marcaAtiva: string;
+      }[] = [];
+      for (const titulo of titulos) {
+        const entradaIso = paraIso(titulo.entradaCarteira);
+        const passos = passosDaRegua(carteira, titulo);
+        // Catch-up: título que entra com parte da régua já "vencida" (entrada
+        // retroativa) assume a etapa mais recente, sem disparar as anteriores.
+        let atrasadaMaisRecente: (typeof passos)[number] | null = null;
+        for (const passo of passos) {
+          const dataPasso = addDias(entradaIso, passo.off);
+          const chave = `${titulo.id}|${passo.etapa}|${passo.canal}|1`;
+          if (difDias(dataPasso, hoje) < 0) {
+            if (!chaves.has(chave)) atrasadaMaisRecente = passo;
+            continue;
+          }
+          if (difDias(dataPasso, hoje) > 3) continue; // horizonte de agendamento
+          if (chaves.has(chave)) continue;
           chaves.add(chave);
-          const data = atrasadaMaisRecente.canal === 'ligação' && !podeLigarNoDia(hoje)
-            ? proximoDiaDeLigacao(hoje)
-            : hoje;
+          const data = passo.canal === 'ligação' && !podeLigarNoDia(dataPasso)
+            ? proximoDiaDeLigacao(dataPasso)
+            : dataPasso;
           novas.push({
-            clienteId: cliente.id, tituloId: titulo.id, lojistaId: titulo.lojistaId,
-            etapa: atrasadaMaisRecente.etapa, canal: atrasadaMaisRecente.canal,
-            quem: atrasadaMaisRecente.quem, descricao: atrasadaMaisRecente.descricao,
-            dataProgramada: deIso(data), tentativa: 1,
+            escritorioId: escritorio.id, carteiraId: carteira.id,
+            tituloId: titulo.id, devedorId: titulo.devedorId,
+            etapa: passo.etapa, canal: passo.canal, quem: passo.quem, tipo: passo.tipo,
+            descricao: passo.descricao, dataProgramada: deIso(data), tentativa: 1,
+            marcaAtiva: escritorio.marcaNome,
           });
         }
+        if (atrasadaMaisRecente) {
+          const chave = `${titulo.id}|${atrasadaMaisRecente.etapa}|${atrasadaMaisRecente.canal}|1`;
+          if (!chaves.has(chave)) {
+            chaves.add(chave);
+            const data = atrasadaMaisRecente.canal === 'ligação' && !podeLigarNoDia(hoje)
+              ? proximoDiaDeLigacao(hoje)
+              : hoje;
+            novas.push({
+              escritorioId: escritorio.id, carteiraId: carteira.id,
+              tituloId: titulo.id, devedorId: titulo.devedorId,
+              etapa: atrasadaMaisRecente.etapa, canal: atrasadaMaisRecente.canal,
+              quem: atrasadaMaisRecente.quem, tipo: atrasadaMaisRecente.tipo,
+              descricao: atrasadaMaisRecente.descricao,
+              dataProgramada: deIso(data), tentativa: 1,
+              marcaAtiva: escritorio.marcaNome,
+            });
+          }
+        }
       }
-    }
-    if (novas.length) {
-      const criadas = await db.acaoCobranca.createMany({ data: novas, skipDuplicates: true });
-      resumo.acoesAgendadas += criadas.count;
+      if (novas.length) {
+        const criadas = await db.acaoCobranca.createMany({ data: novas, skipDuplicates: true });
+        resumo.acoesAgendadas += criadas.count;
+      }
     }
   }
 
-  // ---- 5) execução das ações do dia ------------------------------------------
+  // ---- 3) execução das ações do dia ------------------------------------------
   const due = await db.acaoCobranca.findMany({
     where: { ...escopo, estado: 'agendada', dataProgramada: { lte: deIso(hoje) } },
-    include: { titulo: true, lojista: true, cliente: true },
-    orderBy: [{ clienteId: 'asc' }, { lojistaId: 'asc' }, { id: 'asc' }],
+    include: {
+      titulo: true, devedor: true, carteira: { include: { credor: true } }, escritorio: true,
+    },
+    orderBy: [{ escritorioId: 'asc' }, { devedorId: 'asc' }, { id: 'asc' }],
   });
 
-  const ligacoesDoDia = new Set<string>(); // lojistas que já têm ligação hoje
+  const ligacoesDoDia = new Set<string>(); // devedores que já têm ligação hoje
   const jaLigadas = await db.acaoCobranca.findMany({
     where: {
       ...escopo,
@@ -232,82 +229,232 @@ export async function executarTick(opcoes: OpcoesTick): Promise<ResumoTick> {
         { executadaEm: { gte: deIso(hoje), lt: deIso(addDias(hoje, 1)) } },
       ],
     },
-    select: { lojistaId: true },
+    select: { devedorId: true },
   });
-  for (const l of jaLigadas) ligacoesDoDia.add(l.lojistaId);
+  for (const l of jaLigadas) ligacoesDoDia.add(l.devedorId);
 
   for (const acao of due) {
-    const { titulo, lojista, cliente } = acao;
-    // Régua pausada (negociação em curso, lista de não cobrança): a ação espera.
-    if (!ESTADOS_NA_REGUA.includes(titulo.estado as never) || lojista.naoCobrar) continue;
+    const { titulo, devedor, carteira, escritorio } = acao;
+    const credor = carteira.credor;
+    if (!ESTADOS_NA_REGUA.includes(titulo.estado as never) || devedor.naoCobrar) continue;
 
+    // §3: título contestado → cobrança pausada até o escritório responder.
+    if (titulo.contestadoEm != null) continue;
+
+    // §3: pedido de não contato (total) → nada sai; o caso é do analista.
+    if (devedor.naoContatar) continue;
+
+    // §3: canal bloqueado a pedido do devedor → a ação não sai por ali;
+    // vira exceção para o analista decidir o próximo passo.
+    if ((devedor.canaisBloqueados as string[]).includes(acao.canal)) {
+      await db.acaoCobranca.update({
+        where: { id: acao.id },
+        data: { estado: 'bloqueada', motivoBloqueio: BLOQUEIOS.canal, executadaEm: new Date() },
+      });
+      await abrirExcecao(escritorio, devedor, titulo.id, BLOQUEIOS.canal, titulo.valorCentavos);
+      await auditar(escritorio.id, 'acao', acao.id, 'agendada', 'bloqueada', 'sistema', BLOQUEIOS.canal);
+      resumo.bloqueiosConformidade++;
+      continue;
+    }
+
+    // Ligações: janela permitida e no máximo uma por dia por devedor (§3).
     if (acao.canal === 'ligação') {
-      // §3: dias úteis e sábados; no máximo uma ligação por dia por devedor.
-      if (!podeLigarNoDia(hoje) || ligacoesDoDia.has(acao.lojistaId)) {
+      if (!podeLigarNoDia(hoje) || ligacoesDoDia.has(acao.devedorId)) {
         await db.acaoCobranca.update({
           where: { id: acao.id },
-          data: { dataProgramada: deIso(proximoDiaDeLigacao(hoje)) },
+          data: {
+            dataProgramada: deIso(proximoDiaDeLigacao(hoje)),
+            motivoBloqueio: podeLigarNoDia(hoje) ? null : BLOQUEIOS.horario,
+          },
         });
         resumo.ligacoesAdiadas++;
         continue;
       }
-      ligacoesDoDia.add(acao.lojistaId);
-      await db.acaoCobranca.update({
-        where: { id: acao.id },
-        data: { estado: 'em andamento' },
-      });
-      await auditar(cliente.id, 'acao', acao.id, 'agendada', 'em andamento', 'sistema',
-        'na agenda de ligações do analista');
+      ligacoesDoDia.add(acao.devedorId);
+      await db.acaoCobranca.update({ where: { id: acao.id }, data: { estado: 'em andamento' } });
+      await auditar(escritorio.id, 'acao', acao.id, 'agendada', 'em andamento', 'sistema',
+        'na agenda de ligações (gravada, com aviso no início)');
       resumo.ligacoesNaAgenda++;
       continue;
     }
 
-    if (acao.etapa === 'D+45' || acao.etapa === 'bloqueio') {
-      const tipo = acao.etapa === 'D+45' ? 'protesto' : 'bloqueio de pedidos';
-      const jaExiste = await db.autorizacao.findFirst({
-        where: { tituloId: titulo.id, tipo },
+    // Comunicação prévia de negativação (CDC, art. 43, §2º): sai com prova e
+    // fica registrada no título — é ela que destrava a negativação depois.
+    if (acao.tipo === 'comunicação prévia') {
+      const contexto = montarContexto(escritorio, credor, carteira, devedor, titulo, hoje);
+      const texto = renderizar('comunicação prévia', acao.canal, contexto);
+      const { driver, aviso } = escolherDriver(acao.canal);
+      if (aviso) avisos.add(aviso);
+      const envio = await driver.enviar({ canal: acao.canal, para: destinoParaCanal(acao.canal, devedor), texto });
+      const prova = `envio por ${acao.canal} em ${hoje} (${envio.entrega})`;
+      await db.titulo.update({
+        where: { id: titulo.id },
+        data: { comunicacaoPreviaEnviadaEm: deIso(hoje), comunicacaoPreviaProva: prova },
       });
-      if (!jaExiste) {
-        const aut = await db.autorizacao.create({
+      const doc = await db.documentoJuridico.create({
+        data: {
+          escritorioId: escritorio.id, devedorId: devedor.id,
+          tipo: 'comunicação prévia', status: 'enviado com prova',
+          valorCentavos: titulo.valorCentavos, provaEnvio: prova,
+          marcaAtiva: escritorio.marcaNome,
+          titulos: { create: [{ tituloId: titulo.id }] },
+        },
+      });
+      await db.mensagem.create({
+        data: {
+          escritorioId: escritorio.id, devedorId: devedor.id, tituloId: titulo.id,
+          acaoId: acao.id, canal: acao.canal, de: 'sistema', texto,
+          entrega: envio.entrega, marcaAtiva: escritorio.marcaNome,
+          em: new Date(`${hoje}T12:00:00Z`),
+        },
+      });
+      await db.acaoCobranca.update({
+        where: { id: acao.id },
+        data: {
+          estado: 'finalizada', resultado: `comunicação prévia enviada com prova (${envio.entrega})`,
+          mensagemRenderizada: texto, executadaEm: new Date(`${hoje}T12:00:00Z`),
+        },
+      });
+      await auditar(escritorio.id, 'documento', doc.id, null, 'enviado com prova', 'sistema', prova);
+      resumo.previasEnviadas++;
+      continue;
+    }
+
+    // Notificação extrajudicial: ato do advogado — o motor PREPARA e espera a
+    // assinatura (assinarNotificacoes); nada é enviado sem ela.
+    if (acao.tipo === 'notificação') {
+      const contexto = montarContexto(escritorio, credor, carteira, devedor, titulo, hoje);
+      const texto = renderizar('notificação', acao.canal, contexto);
+      const doc = await db.documentoJuridico.create({
+        data: {
+          escritorioId: escritorio.id, devedorId: devedor.id,
+          tipo: 'notificação extrajudicial', status: 'a assinar',
+          valorCentavos: titulo.valorCentavos, modelo: 'modelo-padrão do escritório',
+          conteudo: { texto, canal: acao.canal, acaoId: acao.id },
+          marcaAtiva: escritorio.marcaNome,
+          titulos: { create: [{ tituloId: titulo.id }] },
+        },
+      });
+      await db.acaoCobranca.update({
+        where: { id: acao.id },
+        data: { estado: 'pendente', resultado: 'aguarda assinatura do advogado', executadaEm: new Date() },
+      });
+      await auditar(escritorio.id, 'documento', doc.id, null, 'a assinar', 'sistema',
+        'notificação preparada — ato privativo do advogado');
+      resumo.notificacoesParaAssinar++;
+      continue;
+    }
+
+    // Negativação/protesto: o gate do art. 43, §2º — sem comunicação prévia
+    // registrada E prazo cumprido, a medida é BARRADA (visível no painel).
+    if (acao.tipo === 'negativação') {
+      if (titulo.contestadoEm != null) {
+        await db.acaoCobranca.update({
+          where: { id: acao.id },
+          data: { estado: 'bloqueada', motivoBloqueio: BLOQUEIOS.contestado, executadaEm: new Date() },
+        });
+        await auditar(escritorio.id, 'acao', acao.id, 'agendada', 'bloqueada', 'sistema', BLOQUEIOS.contestado);
+        resumo.bloqueiosConformidade++;
+        continue;
+      }
+      const previaEm = titulo.comunicacaoPreviaEnviadaEm
+        ? paraIso(titulo.comunicacaoPreviaEnviadaEm)
+        : null;
+      const prazoOk = previaEm != null && difDias(hoje, previaEm) >= PRAZO_COMUNICACAO_PREVIA_DIAS;
+      if (!prazoOk) {
+        await db.acaoCobranca.update({
+          where: { id: acao.id },
           data: {
-            clienteId: cliente.id, lojistaId: lojista.id, tituloId: titulo.id,
-            tipo, valorCentavos: titulo.valorCentavos,
-            pedidoEm: new Date(`${hoje}T09:00:00Z`),
+            estado: 'bloqueada', motivoBloqueio: BLOQUEIOS.previa,
+            // reprograma para depois do prazo, se a prévia existe
+            executadaEm: new Date(),
           },
         });
-        await auditar(cliente.id, 'autorizacao', aut.id, null, 'pendente', 'sistema',
-          `${tipo} preparado — aguarda autorização do cliente`);
-        resumo.autorizacoesCriadas++;
+        await abrirExcecao(escritorio, devedor, titulo.id, BLOQUEIOS.previa, titulo.valorCentavos);
+        await auditar(escritorio.id, 'acao', acao.id, 'agendada', 'bloqueada', 'sistema', BLOQUEIOS.previa);
+        resumo.bloqueiosConformidade++;
+        continue;
       }
+      const subtipo = devedor.tipo === 'PJ' ? 'protesto' : 'negativação';
+      const doc = await db.documentoJuridico.create({
+        data: {
+          escritorioId: escritorio.id, devedorId: devedor.id,
+          tipo: 'autorização', subtipo, status: 'aguarda autorização',
+          valorCentavos: titulo.valorCentavos, marcaAtiva: escritorio.marcaNome,
+          titulos: { create: [{ tituloId: titulo.id }] },
+        },
+      });
       await db.acaoCobranca.update({
         where: { id: acao.id },
         data: {
           estado: 'pendente',
-          resultado: acao.etapa === 'D+45'
-            ? 'aguarda autorização do cliente'
-            : 'aguarda aprovação do cliente — execução no ERP entra na Fase 3',
+          resultado: `${subtipo} preparado — aguarda autorização do escritório, título a título`,
           executadaEm: new Date(),
         },
       });
+      await auditar(escritorio.id, 'documento', doc.id, null, 'aguarda autorização', 'sistema',
+        `${subtipo} com comunicação prévia de ${previaEm} (prazo cumprido)`);
+      resumo.medidasAguardandoAutorizacao++;
       continue;
     }
 
-    if (acao.etapa === 'jurídico') {
+    // E+60: dossiê completo e encaminhamento ao fluxo judicial do escritório.
+    if (acao.tipo === 'judicial') {
+      const [acoesDoTitulo, mensagensDoTitulo, promessas, previas] = await Promise.all([
+        db.acaoCobranca.findMany({
+          where: { tituloId: titulo.id, estado: { in: ['finalizada', 'bloqueada', 'pendente'] } },
+          orderBy: { dataProgramada: 'asc' },
+          select: { etapa: true, canal: true, estado: true, resultado: true, dataProgramada: true, motivoBloqueio: true },
+        }),
+        db.mensagem.findMany({ where: { tituloId: titulo.id }, select: { canal: true, de: true, em: true } }),
+        db.promessa.findMany({ where: { tituloId: titulo.id } }),
+        db.documentoJuridico.findMany({
+          where: { titulos: { some: { tituloId: titulo.id } }, tipo: { in: ['comunicação prévia', 'notificação extrajudicial'] } },
+          select: { tipo: true, status: true, provaEnvio: true, assinadoPor: true, geradoEm: true },
+        }),
+      ]);
+      const contexto = montarContexto(escritorio, credor, carteira, devedor, titulo, hoje);
+      const dossie = {
+        titulo: {
+          numero: titulo.numero, valorCentavos: titulo.valorCentavos,
+          vencimento: paraIso(titulo.vencimento), entradaCarteira: paraIso(titulo.entradaCarteira),
+          atrasoOriginal: titulo.atrasoOriginal,
+        },
+        credor: credor.nome, carteira: carteira.nome,
+        devedor: { nome: devedor.nome, tipo: devedor.tipo, documento: devedor.documento },
+        calculoAtualizado: contexto.encargos,
+        contatos: acoesDoTitulo, mensagens: mensagensDoTitulo.length,
+        promessas: promessas.map((p) => ({ para: paraIso(p.para), cumprida: p.cumprida })),
+        comunicacoes: previas,
+        geradoEm: hoje,
+      };
+      const doc = await db.documentoJuridico.create({
+        data: {
+          escritorioId: escritorio.id, devedorId: devedor.id,
+          tipo: 'dossiê judicial', status: 'pronto',
+          valorCentavos: titulo.valorCentavos, conteudo: JSON.parse(JSON.stringify(dossie)),
+          marcaAtiva: escritorio.marcaNome,
+          titulos: { create: [{ tituloId: titulo.id }] },
+        },
+      });
+      await db.titulo.update({ where: { id: titulo.id }, data: { estado: 'judicial' } });
       await db.acaoCobranca.update({
         where: { id: acao.id },
         data: {
-          estado: 'pendente',
-          resultado: 'aguarda encaminhamento — contrato direto entre cliente e escritório parceiro (em definição)',
-          executadaEm: new Date(),
+          estado: 'finalizada',
+          resultado: 'dossiê gerado — título no fluxo judicial do escritório',
+          executadaEm: new Date(`${hoje}T12:00:00Z`),
         },
       });
-      resumo.pendentesJuridico++;
+      await auditar(escritorio.id, 'titulo', titulo.id, 'em cobrança', 'judicial', 'sistema',
+        `dossiê ${doc.id} com histórico completo`);
+      resumo.dossiesGerados++;
       continue;
     }
 
-    // Mensagem (IA ou sistema) por WhatsApp, SMS, e-mail ou carta.
-    const contexto = montarContexto(cliente, lojista, titulo, hoje);
-    const texto = renderizar(acao.etapa, acao.canal, contexto);
+    // Mensagem comum (boas-vindas, proposta, reforço, formal, última proposta).
+    const contexto = montarContexto(escritorio, credor, carteira, devedor, titulo, hoje);
+    const texto = renderizar(tipoDeTexto(acao.tipo, acao.etapa), acao.canal, contexto);
     const esperado = {
       valoresCentavos: [
         contexto.valorCentavos,
@@ -318,6 +465,7 @@ export async function executarTick(opcoes: OpcoesTick): Promise<ResumoTick> {
       datasIso: [contexto.vencimentoIso, hoje],
       multaCadastrada: contexto.multaCadastrada,
       parcelasMax: contexto.parcelasMax,
+      etapaFormal: false,
     };
     const conferencia = conferirMensagem(texto, esperado);
 
@@ -326,32 +474,21 @@ export async function executarTick(opcoes: OpcoesTick): Promise<ResumoTick> {
         where: { id: acao.id },
         data: { estado: 'bloqueada', motivoBloqueio: conferencia.motivo, executadaEm: new Date() },
       });
-      const excecao = await db.excecao.create({
-        data: {
-          clienteId: cliente.id, lojistaId: lojista.id, tituloId: titulo.id,
-          motivo: `Mensagem bloqueada — ${conferencia.motivo}`,
-          slaMin: cliente.plano === 'Max' ? 5 : 15,
-          valorEnvolvidoCentavos: titulo.valorCentavos,
-        },
-      });
-      await auditar(cliente.id, 'acao', acao.id, 'agendada', 'bloqueada', 'sistema', conferencia.motivo);
-      await auditar(cliente.id, 'excecao', excecao.id, null, 'aberta', 'sistema', 'conferência barrou o envio');
+      await abrirExcecao(escritorio, devedor, titulo.id,
+        `Mensagem bloqueada — ${conferencia.motivo}`, titulo.valorCentavos);
+      await auditar(escritorio.id, 'acao', acao.id, 'agendada', 'bloqueada', 'sistema', conferencia.motivo);
       resumo.mensagensBloqueadas++;
       continue;
     }
 
     const { driver, aviso } = escolherDriver(acao.canal);
     if (aviso) avisos.add(aviso);
-    const envio = await driver.enviar({
-      canal: acao.canal,
-      para: destinoParaCanal(acao.canal, lojista),
-      texto,
-    });
+    const envio = await driver.enviar({ canal: acao.canal, para: destinoParaCanal(acao.canal, devedor), texto });
     await db.mensagem.create({
       data: {
-        clienteId: cliente.id, lojistaId: lojista.id, tituloId: titulo.id,
+        escritorioId: escritorio.id, devedorId: devedor.id, tituloId: titulo.id,
         acaoId: acao.id, canal: acao.canal, de: 'IA', texto, entrega: envio.entrega,
-        em: new Date(`${hoje}T12:00:00Z`),
+        marcaAtiva: escritorio.marcaNome, em: new Date(`${hoje}T12:00:00Z`),
       },
     });
     await db.acaoCobranca.update({
@@ -363,11 +500,12 @@ export async function executarTick(opcoes: OpcoesTick): Promise<ResumoTick> {
         executadaEm: new Date(`${hoje}T12:00:00Z`),
       },
     });
-    await auditar(cliente.id, 'acao', acao.id, 'agendada', 'finalizada', 'IA', `${acao.etapa} por ${acao.canal}`);
+    await auditar(escritorio.id, 'acao', acao.id, 'agendada', 'finalizada', 'IA',
+      `${acao.etapa} por ${acao.canal}, em nome de ${escritorio.marcaNome}`);
     resumo.mensagensEnviadas++;
   }
 
-  // ---- 6) promessas vencidas sem pagamento -----------------------------------
+  // ---- 4) promessas vencidas sem pagamento -----------------------------------
   const promessasVencidas = await db.promessa.findMany({
     where: { ...escopo, cumprida: null, para: { lt: deIso(hoje) } },
     include: { titulo: { select: { pagoEm: true } } },
@@ -384,16 +522,110 @@ export async function executarTick(opcoes: OpcoesTick): Promise<ResumoTick> {
   return resumo;
 }
 
+// Assinatura das notificações preparadas: ato do advogado (papel "advogado").
+// Assina, envia pelo canal previsto e registra a prova.
+export async function assinarNotificacoes(
+  escritorioId: string,
+  hoje: string,
+  assinante: string, // "Nome — OAB ..."
+  limite?: number,
+): Promise<number> {
+  const docs = await db.documentoJuridico.findMany({
+    where: { escritorioId, tipo: 'notificação extrajudicial', status: 'a assinar' },
+    include: { titulos: true, devedor: true },
+    orderBy: { geradoEm: 'asc' },
+    ...(limite ? { take: limite } : {}),
+  });
+  let assinadas = 0;
+  for (const doc of docs) {
+    const conteudo = (doc.conteudo ?? {}) as { texto?: string; canal?: string; acaoId?: string };
+    const canal = conteudo.canal ?? 'e-mail';
+    const texto = (conteudo.texto ?? '').replace('[assinatura do advogado responsável]', assinante);
+    const { driver } = escolherDriver(canal);
+    const envio = await driver.enviar({
+      canal, para: destinoParaCanal(canal, doc.devedor), texto,
+    });
+    const prova = `envio por ${canal} em ${hoje} (${envio.entrega})`;
+    await db.documentoJuridico.update({
+      where: { id: doc.id },
+      data: {
+        status: 'enviado com prova', assinadoPor: assinante,
+        assinadoEm: new Date(`${hoje}T10:00:00Z`), provaEnvio: prova,
+      },
+    });
+    await db.mensagem.create({
+      data: {
+        escritorioId, devedorId: doc.devedorId, tituloId: doc.titulos[0]?.tituloId,
+        canal, de: 'analista', texto, entrega: envio.entrega,
+        marcaAtiva: doc.marcaAtiva, em: new Date(`${hoje}T10:00:00Z`),
+      },
+    });
+    if (conteudo.acaoId) {
+      await db.acaoCobranca.update({
+        where: { id: conteudo.acaoId },
+        data: { estado: 'finalizada', resultado: `notificação assinada por ${assinante} e enviada` },
+      }).catch(() => {});
+    }
+    await auditar(escritorioId, 'documento', doc.id, 'a assinar', 'enviado com prova', 'analista',
+      `assinada por ${assinante}`);
+    assinadas++;
+  }
+  return assinadas;
+}
+
+// Autorização de negativação/protesto, título a título: decisão do
+// escritório. Recheca o gate da comunicação prévia na hora de executar.
+export async function autorizarMedidas(
+  escritorioId: string,
+  hoje: string,
+  autorizante: string,
+  limite?: number,
+): Promise<{ autorizadas: number; barradas: number }> {
+  const docs = await db.documentoJuridico.findMany({
+    where: { escritorioId, tipo: 'autorização', status: 'aguarda autorização' },
+    include: { titulos: { include: { titulo: true } } },
+    orderBy: { geradoEm: 'asc' },
+    ...(limite ? { take: limite } : {}),
+  });
+  let autorizadas = 0;
+  let barradas = 0;
+  for (const doc of docs) {
+    const vinculo = doc.titulos[0];
+    if (!vinculo) continue;
+    const titulo = vinculo.titulo;
+    const previaEm = titulo.comunicacaoPreviaEnviadaEm ? paraIso(titulo.comunicacaoPreviaEnviadaEm) : null;
+    const prazoOk = previaEm != null && difDias(hoje, previaEm) >= PRAZO_COMUNICACAO_PREVIA_DIAS;
+    if (titulo.contestadoEm != null || !prazoOk || !ESTADOS_NA_REGUA.includes(titulo.estado as never)) {
+      await auditar(escritorioId, 'documento', doc.id, 'aguarda autorização', 'aguarda autorização',
+        'sistema', titulo.contestadoEm != null ? BLOQUEIOS.contestado : BLOQUEIOS.previa);
+      barradas++;
+      continue;
+    }
+    const novoEstado = doc.subtipo === 'protesto' ? 'protestado' : 'negativado';
+    await db.documentoJuridico.update({
+      where: { id: doc.id },
+      data: { status: 'autorizado', assinadoPor: autorizante, assinadoEm: new Date(`${hoje}T10:00:00Z`) },
+    });
+    await db.titulo.update({ where: { id: titulo.id }, data: { estado: novoEstado } });
+    await auditar(escritorioId, 'titulo', titulo.id, titulo.estado, novoEstado, 'escritório',
+      `${doc.subtipo} autorizado por ${autorizante}, título a título`);
+    autorizadas++;
+  }
+  return { autorizadas, barradas };
+}
+
 export function formatarResumoTick(r: ResumoTick): string {
   const partes = [
-    `${r.titulosVencidos} título(s) vencido(s)`,
-    `${r.foraDaRegua} fora da régua`,
     `${r.acoesAgendadas} ação(ões) agendada(s)`,
     `${r.mensagensEnviadas} mensagem(ns) enviada(s)`,
     `${r.mensagensBloqueadas} bloqueada(s) na conferência`,
+    `${r.bloqueiosConformidade} trava(s) de conformidade`,
     `${r.ligacoesNaAgenda} ligação(ões) na agenda`,
     `${r.ligacoesAdiadas} adiada(s)`,
-    `${r.autorizacoesCriadas} autorização(ões) preparada(s)`,
+    `${r.previasEnviadas} comunicação(ões) prévia(s)`,
+    `${r.notificacoesParaAssinar} notificação(ões) a assinar`,
+    `${r.medidasAguardandoAutorizacao} medida(s) aguardando autorização`,
+    `${r.dossiesGerados} dossiê(s)`,
     `${r.promessasAvaliadas} promessa(s) avaliada(s)`,
   ];
   const texto = `tick de ${r.hoje}: ${partes.join(' · ')}`;

@@ -9,6 +9,11 @@ import { useEffect, useState, type ReactNode } from 'react';
 
 const MARCADOR = '/portal/';
 
+// Fase 2: construído com NEXT_PUBLIC_MODO=real (npm run build:real), o portal
+// fala com a API persistente do servidor em vez dos JSONs estáticos, e as
+// ações do devedor têm efeito real no banco.
+export const MODO_REAL = process.env.NEXT_PUBLIC_MODO === 'real';
+
 export function raizApp(): string {
   if (typeof window === 'undefined') return '';
   const caminho = window.location.pathname;

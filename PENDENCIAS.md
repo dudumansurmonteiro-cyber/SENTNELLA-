@@ -62,10 +62,23 @@ definição" — nunca com valores inventados.
   conformidade, FAQ com 12 perguntas, formulário de escritórios, páginas
   /white-label e /conformidade novas, /demo com capturas do v3;
   /portal-do-lojista saiu do ar (rascunho).
-- **Fase 2 do v3 (motor real)** — próxima: reancorar schema Prisma e motor
-  na hierarquia v3 com os gates do CDC; até lá, `packages/db`, `packages/motor`
-  e `apps/servidor` continuam na forma do v2 e os testes antigos não compilam
-  contra os tipos novos.
+- **Fase 2 do v3 entregue (03/10).** Schema Prisma reancorado na hierarquia
+  escritório → credor → carteira → devedor → título (migração
+  `v3-hierarquia`); motor real com a régua da entrada nos dois eixos e os
+  gates da seção 3 (terceiro descartado na importação, contestação pausa,
+  negativação só com comunicação prévia + prazo, canais bloqueados, ligações
+  1/dia seg–sáb, conferência pré-envio com termos vedados); notificação só
+  sai assinada (`npm run assinar`) e medida formal só autorizada
+  (`npm run autorizar`); dossiê no E+60; simulação de 90 dias com o motor de
+  produção (3.719 mensagens, 81 acordos, 21 contestações, 138 travas);
+  exportação banco → superfícies; servidor com API persistente do espaço do
+  devedor (acordo com custo total gravando `custoTotalAceitoEm`,
+  contestação, pagamento informado, não-contato, falar com pessoa) e portal
+  do credor; 26 testes + verificador e2e no navegador
+  (`scripts/verificar-real.mjs`, 9 checagens). Ficam para a Fase 3: canais
+  reais (WhatsApp/SMS/e-mail/carta), boleto/Pix por API bancária, assinatura
+  eletrônica, negativação/protesto reais, escrita pelo console e relatório
+  mensal automático por credor.
 - **Âncoras internas da home** — as seções white label e conformidade
   reutilizam os ids antigos (#painel/#portal/#sla seguem no DOM; a troca
   cosmética de ids foi deixada de lado nesta rodada).

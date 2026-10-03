@@ -1,7 +1,9 @@
-// Baixa de pagamentos por importação (Fase 2 — §11). Cada pagamento:
-// título → pago (com auditoria), ações futuras canceladas, promessas do
-// título avaliadas (pagar até a data combinada cumpre a promessa) e
-// "pagamento informado" pelo portal marcado como conferido.
+// Baixa de pagamentos por importação (Fase 2 — §10.2), agora por CARTEIRA.
+// Cada pagamento: título → pago (com auditoria), ações futuras canceladas,
+// promessas do título avaliadas (pagar até a data combinada cumpre) e
+// "pagamento informado" pelo espaço do devedor marcado como conferido.
+// O dinheiro em si NUNCA passa pela Sentinella: a baixa espelha o extrato da
+// conta do credor ou do escritório (arquivo de retorno / planilha).
 
 import { readFileSync } from 'node:fs';
 import { db, auditar } from '@sentinella/db';
@@ -25,9 +27,12 @@ export interface ResultadoBaixa {
 }
 
 export async function aplicarPagamentos(
-  clienteId: string,
+  carteiraId: string,
   pagamentos: Pagamento[],
 ): Promise<ResultadoBaixa> {
+  const carteira = await db.carteira.findUnique({ where: { id: carteiraId } });
+  if (!carteira) throw new Error(`carteira ${carteiraId} não cadastrada`);
+
   const resultado: ResultadoBaixa = {
     baixados: 0, jaPagos: 0, naoEncontrados: [],
     promessasCumpridas: 0, promessasFalhas: 0, acoesCanceladas: 0,
@@ -35,7 +40,7 @@ export async function aplicarPagamentos(
 
   for (const p of pagamentos) {
     const titulo = await db.titulo.findUnique({
-      where: { clienteId_numero: { clienteId, numero: p.numeroTitulo } },
+      where: { carteiraId_numero: { carteiraId, numero: p.numeroTitulo } },
     });
     if (!titulo) {
       resultado.naoEncontrados.push(p.numeroTitulo);
@@ -54,8 +59,8 @@ export async function aplicarPagamentos(
         valorPagoCentavos: p.valorCentavos ?? titulo.valorCentavos,
       },
     });
-    await auditar(clienteId, 'titulo', titulo.id, titulo.estado, 'pago', 'sistema',
-      `baixa por importação — pagamento em ${p.dataIso}`);
+    await auditar(carteira.escritorioId, 'titulo', titulo.id, titulo.estado, 'pago', 'sistema',
+      `baixa por importação — pagamento em ${p.dataIso} na ${carteira.contaEmissora}`);
     resultado.baixados++;
 
     // Ações ainda não executadas deixam de fazer sentido.
@@ -68,12 +73,12 @@ export async function aplicarPagamentos(
         where: { id: a.id },
         data: { estado: 'cancelada', resultado: 'título pago — baixa por importação' },
       });
-      await auditar(clienteId, 'acao', a.id, a.estado, 'cancelada', 'sistema', 'título pago');
+      await auditar(carteira.escritorioId, 'acao', a.id, a.estado, 'cancelada', 'sistema', 'título pago');
     }
     resultado.acoesCanceladas += pendentes.length;
 
-    // Promessas em aberto do título: pagar até a data combinada (com 1 dia de
-    // tolerância de compensação) cumpre a promessa.
+    // Promessas em aberto: pagar até a data combinada (1 dia de tolerância
+    // de compensação) cumpre a promessa.
     const promessas = await db.promessa.findMany({
       where: { tituloId: titulo.id, cumprida: null },
     });
@@ -93,15 +98,13 @@ export async function aplicarPagamentos(
 }
 
 export async function importarPagamentos(
-  clienteId: string,
+  carteiraId: string,
   caminho: string,
 ): Promise<{ relatorio: RelatorioImportacao; baixa: ResultadoBaixa }> {
-  const cliente = await db.cliente.findUnique({ where: { id: clienteId } });
-  if (!cliente) throw new Error(`cliente ${clienteId} não cadastrado`);
-
   const plan = lerPlanilha(readFileSync(caminho, 'utf8'));
   const relatorio: RelatorioImportacao = {
-    arquivo: caminho, processadas: 0, criadas: 0, atualizadas: 0, ignoradas: 0, erros: [],
+    arquivo: caminho, processadas: 0, criadas: 0, atualizadas: 0,
+    ignoradas: 0, descartesTerceiro: 0, erros: [],
   };
   const pagamentos: Pagamento[] = [];
 
@@ -128,10 +131,10 @@ export async function importarPagamentos(
     pagamentos.push({ numeroTitulo, dataIso, valorCentavos });
   }
 
-  const baixa = await aplicarPagamentos(clienteId, pagamentos);
+  const baixa = await aplicarPagamentos(carteiraId, pagamentos);
   relatorio.atualizadas = baixa.baixados;
   relatorio.ignoradas = baixa.jaPagos;
   for (const numero of baixa.naoEncontrados)
-    relatorio.erros.push({ linha: 0, motivo: `título ${numero} não encontrado na base` });
+    relatorio.erros.push({ linha: 0, motivo: `título ${numero} não encontrado na carteira` });
   return { relatorio, baixa };
 }

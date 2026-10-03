@@ -3,13 +3,17 @@
 // Espaço do devedor (§7): white label do escritório, credor original sempre
 // identificado, custo total de qualquer acordo ANTES do aceite (Lei 14.181),
 // contestação que pausa a cobrança, preferências de contato e atendimento
-// humano. Rating jamais aparece aqui. Ações são demonstrativas (não persistem).
+// humano. Rating jamais aparece aqui. Na demonstração estática as ações não
+// persistem; construído com NEXT_PUBLIC_MODO=real (Fase 2), cada ação vai à
+// API do servidor e tem efeito real — acordo, contestação, pausa e exceção.
 
-import { Suspense, useEffect, useMemo, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { L, raizApp } from '../../lib/raiz';
+import { L, MODO_REAL, raizApp } from '../../lib/raiz';
 import { dataBr, moeda } from '@sentinella/dados';
 import type { EntradaPortalDevedor, PortalDevedores } from '@sentinella/dados';
+
+const CANAIS_PREFERENCIA = ['WhatsApp', 'SMS', 'e-mail', 'ligação'];
 
 const iniciaisDe = (nome: string) =>
   nome
@@ -22,7 +26,8 @@ const iniciaisDe = (nome: string) =>
 function Confirmacao({ texto }: { texto: string }) {
   return (
     <p className="nota mt-3" role="status">
-      <b>✓ {texto}</b> — demonstração: nada é registrado de verdade.
+      <b>✓ {texto}</b>
+      {MODO_REAL ? ' — registrado.' : ' — demonstração: nada é registrado de verdade.'}
     </p>
   );
 }
@@ -30,22 +35,48 @@ function Confirmacao({ texto }: { texto: string }) {
 function Conteudo() {
   const params = useSearchParams();
   const token = params.get('t') ?? '';
-  const [todos, setTodos] = useState<PortalDevedores | null>(null);
+  const [entrada, setEntrada] = useState<EntradaPortalDevedor | undefined>(undefined);
+  const [carregado, setCarregado] = useState(false);
   const [aba, setAba] = useState<'' | 'acordo' | 'paguei' | 'contestar' | 'contato' | 'pessoa'>('');
   const [feito, setFeito] = useState<string | null>(null);
   const [acordoEscolhido, setAcordoEscolhido] = useState<number | null>(null);
+  const [numeroSel, setNumeroSel] = useState('');
+  const [observacao, setObservacao] = useState('');
+  const [motivo, setMotivo] = useState('');
+  const [recado, setRecado] = useState('');
+  const [aceitos, setAceitos] = useState<string[]>(CANAIS_PREFERENCIA);
+  const [retorno, setRetorno] = useState<string | null>(null);
+  const [erro, setErro] = useState<string | null>(null);
+
+  const carregar = useCallback(async () => {
+    if (MODO_REAL) {
+      const r = await fetch(`${raizApp()}api/devedor/${token}`);
+      setEntrada(r.ok ? await r.json() : undefined);
+    } else {
+      const todos: PortalDevedores = await fetch(`${raizApp()}dados/devedores.json`).then((r) => r.json());
+      setEntrada(todos[token]);
+    }
+    setCarregado(true);
+  }, [token]);
 
   useEffect(() => {
-    fetch(`${raizApp()}dados/devedores.json`).then((r) => r.json()).then(setTodos);
-  }, []);
+    carregar().catch(() => setCarregado(true));
+  }, [carregar]);
 
-  const entrada: EntradaPortalDevedor | undefined = todos?.[token];
+  // O formulário parte do estado atual: canais já bloqueados desmarcados,
+  // primeiro título aberto selecionado.
+  useEffect(() => {
+    if (!entrada) return;
+    setAceitos(CANAIS_PREFERENCIA.filter((c) => !(entrada.canaisBloqueados ?? []).includes(c)));
+    setNumeroSel((n) => n || entrada.titulosAbertos[0]?.numero || '');
+  }, [entrada]);
+
   const totalAberto = useMemo(
     () => entrada?.titulosAbertos.reduce((s, t) => s + t.valorAtualizado, 0) ?? 0,
     [entrada],
   );
 
-  if (!todos) return <main className="container-m pt-10"><p className="suave">Carregando…</p></main>;
+  if (!carregado) return <main className="container-m pt-10"><p className="suave">Carregando…</p></main>;
   if (!entrada) {
     return (
       <main className="container-m pt-10">
@@ -64,6 +95,34 @@ function Conteudo() {
   const marcarFeito = (chave: string) => {
     setFeito(chave);
     setAba('');
+  };
+
+  // No modo real a ação vai à API e a página recarrega o estado do banco; na
+  // demonstração estática, só a confirmação local.
+  const enviar = async (acao: string, corpo: object, chave: string) => {
+    if (!MODO_REAL) {
+      setRetorno(null);
+      marcarFeito(chave);
+      return;
+    }
+    setErro(null);
+    try {
+      const r = await fetch(`${raizApp()}api/devedor/${token}/${acao}`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(corpo),
+      });
+      const resposta = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        setErro(typeof resposta.erro === 'string' ? resposta.erro : 'não deu para registrar agora — tente de novo');
+        return;
+      }
+      setRetorno(typeof resposta.mensagem === 'string' ? resposta.mensagem : null);
+      marcarFeito(chave);
+      await carregar();
+    } catch {
+      setErro('falha de conexão — tente de novo');
+    }
   };
 
   return (
@@ -136,6 +195,12 @@ function Conteudo() {
           )}
         </div>
 
+        {erro && (
+          <p className="nota mt-3" role="alert">
+            <b>Não foi desta vez:</b> {erro}
+          </p>
+        )}
+
         {aba === 'acordo' && (
           <div className="cartao mt-4 p-4">
             <h2 className="fonte-titulo text-[16.5px] font-semibold">Opções de parcelamento</h2>
@@ -170,7 +235,9 @@ function Conteudo() {
               type="button"
               className="botao mt-3 w-full"
               disabled={acordoEscolhido == null}
-              onClick={() => marcarFeito('acordo')}
+              onClick={() =>
+                acordoEscolhido != null &&
+                enviar('acordo', { parcelas: entrada.simulacoes[acordoEscolhido].parcelas }, 'acordo')}
             >
               {acordoEscolhido == null
                 ? 'Escolha uma opção para ver e aceitar'
@@ -181,7 +248,9 @@ function Conteudo() {
             </p>
           </div>
         )}
-        {feito === 'acordo' && <Confirmacao texto="Acordo registrado — a primeira parcela chegaria por boleto/Pix" />}
+        {feito === 'acordo' && (
+          <Confirmacao texto={retorno ?? 'Acordo registrado — a primeira parcela chegaria por boleto/Pix'} />
+        )}
 
         {aba === 'paguei' && (
           <div className="cartao mt-4 p-4">
@@ -189,13 +258,39 @@ function Conteudo() {
             <p className="suave mt-1 text-[13px]">
               Informe quando e como pagou. A cobrança <b>pausa imediatamente</b> até a conferência.
             </p>
-            <input className="campo mt-3" placeholder="Ex.: Pix em 28/09, pelo app do banco" aria-label="Como foi o pagamento" />
-            <button type="button" className="botao mt-2 w-full" onClick={() => marcarFeito('paguei')}>
+            {entrada.titulosAbertos.length > 1 && (
+              <select
+                className="campo mt-3"
+                value={numeroSel}
+                onChange={(e) => setNumeroSel(e.target.value)}
+                aria-label="Qual título foi pago"
+              >
+                {entrada.titulosAbertos.map((t) => (
+                  <option key={t.numero} value={t.numero}>
+                    título {t.numero} — {moeda(t.valorAtualizado)}
+                  </option>
+                ))}
+              </select>
+            )}
+            <input
+              className="campo mt-3"
+              placeholder="Ex.: Pix em 28/09, pelo app do banco"
+              aria-label="Como foi o pagamento"
+              value={observacao}
+              onChange={(e) => setObservacao(e.target.value)}
+            />
+            <button
+              type="button"
+              className="botao mt-2 w-full"
+              onClick={() => enviar('pagamento', { numero: numeroSel, observacao }, 'paguei')}
+            >
               Enviar para conferência
             </button>
           </div>
         )}
-        {feito === 'paguei' && <Confirmacao texto="Pagamento informado — cobrança pausada até a conferência" />}
+        {feito === 'paguei' && (
+          <Confirmacao texto={retorno ?? 'Pagamento informado — cobrança pausada até a conferência'} />
+        )}
 
         {aba === 'contestar' && (
           <div className="cartao mt-4 p-4">
@@ -204,13 +299,43 @@ function Conteudo() {
               Conte o que aconteceu. O título fica <b>em análise e a cobrança pausa</b> até o
               escritório responder.
             </p>
-            <textarea className="campo mt-3" rows={3} placeholder="Descreva a divergência" aria-label="Motivo da contestação" />
-            <button type="button" className="botao mt-2 w-full" onClick={() => marcarFeito('contestar')}>
+            {entrada.titulosAbertos.length > 1 && (
+              <select
+                className="campo mt-3"
+                value={numeroSel}
+                onChange={(e) => setNumeroSel(e.target.value)}
+                aria-label="Qual título você contesta"
+              >
+                {entrada.titulosAbertos
+                  .filter((t) => t.estado !== 'contestado')
+                  .map((t) => (
+                    <option key={t.numero} value={t.numero}>
+                      título {t.numero} — {moeda(t.valorAtualizado)}
+                    </option>
+                  ))}
+              </select>
+            )}
+            <textarea
+              className="campo mt-3"
+              rows={3}
+              placeholder="Descreva a divergência"
+              aria-label="Motivo da contestação"
+              value={motivo}
+              onChange={(e) => setMotivo(e.target.value)}
+            />
+            <button
+              type="button"
+              className="botao mt-2 w-full"
+              disabled={MODO_REAL && !motivo.trim()}
+              onClick={() => enviar('contestacao', { numero: numeroSel, motivo }, 'contestar')}
+            >
               Enviar contestação
             </button>
           </div>
         )}
-        {feito === 'contestar' && <Confirmacao texto="Contestação enviada — cobrança pausada até a resposta" />}
+        {feito === 'contestar' && (
+          <Confirmacao texto={retorno ?? 'Contestação enviada — cobrança pausada até a resposta'} />
+        )}
 
         {aba === 'contato' && (
           <div className="cartao mt-4 p-4">
@@ -219,17 +344,30 @@ function Conteudo() {
               Você pode pedir outro canal ou pedir para não ser contatado por algum deles — a
               régua respeita na hora.
             </p>
-            {['WhatsApp', 'SMS', 'e-mail', 'ligação'].map((c) => (
+            {CANAIS_PREFERENCIA.map((c) => (
               <label key={c} className="mt-2 flex items-center gap-2 text-[14px]">
-                <input type="checkbox" defaultChecked /> aceito contato por {c}
+                <input
+                  type="checkbox"
+                  checked={aceitos.includes(c)}
+                  onChange={(e) =>
+                    setAceitos((lista) =>
+                      e.target.checked ? [...lista, c] : lista.filter((x) => x !== c))}
+                />{' '}
+                aceito contato por {c}
               </label>
             ))}
-            <button type="button" className="botao mt-3 w-full" onClick={() => marcarFeito('contato')}>
+            <button
+              type="button"
+              className="botao mt-3 w-full"
+              onClick={() => enviar('contato', { aceitos }, 'contato')}
+            >
               Salvar preferências
             </button>
           </div>
         )}
-        {feito === 'contato' && <Confirmacao texto="Preferências registradas — valem para os próximos contatos" />}
+        {feito === 'contato' && (
+          <Confirmacao texto={retorno ?? 'Preferências registradas — valem para os próximos contatos'} />
+        )}
 
         {aba === 'pessoa' && (
           <div className="cartao mt-4 p-4">
@@ -239,13 +377,25 @@ function Conteudo() {
               você estiver passando por uma situação difícil (desemprego, doença, superendividamento),
               diga — há tratamento adequado para isso, previsto em lei.
             </p>
-            <input className="campo mt-3" placeholder="Sua mensagem" aria-label="Mensagem para o atendimento" />
-            <button type="button" className="botao mt-2 w-full" onClick={() => marcarFeito('pessoa')}>
+            <input
+              className="campo mt-3"
+              placeholder="Sua mensagem"
+              aria-label="Mensagem para o atendimento"
+              value={recado}
+              onChange={(e) => setRecado(e.target.value)}
+            />
+            <button
+              type="button"
+              className="botao mt-2 w-full"
+              onClick={() => enviar('pessoa', { mensagem: recado }, 'pessoa')}
+            >
               Enviar — respondem pelo seu canal preferido
             </button>
           </div>
         )}
-        {feito === 'pessoa' && <Confirmacao texto="Mensagem enviada ao atendimento do escritório" />}
+        {feito === 'pessoa' && (
+          <Confirmacao texto={retorno ?? 'Mensagem enviada ao atendimento do escritório'} />
+        )}
 
         <section className="mt-6">
           <h2 className="fonte-titulo text-[16.5px] font-semibold">Seus títulos</h2>

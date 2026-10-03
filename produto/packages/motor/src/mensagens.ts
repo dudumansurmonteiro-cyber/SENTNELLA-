@@ -1,7 +1,9 @@
-// Textos das mensagens da régua (Fase 2) — sempre em pt-BR, tom firme e
-// respeitoso (§3: sem ameaça, sem constrangimento). Multa e juros só entram
-// quando o cliente tem os percentuais cadastrados (§12); sem cadastro, a
-// mensagem fala apenas do valor original.
+// Textos das mensagens da régua v3 — sempre em pt-BR, em NOME DO ESCRITÓRIO
+// (white label), tom firme e respeitoso (§3: sem ameaça, sem constrangimento,
+// sem citar medida que a régua daquela carteira não alcança — medidas formais
+// só aparecem nos documentos formais). Multa e juros só entram quando a
+// CARTEIRA tem os percentuais cadastrados; sem cadastro, a mensagem fala
+// apenas do valor original.
 
 import { moeda, dataBr } from '@sentinella/dados';
 
@@ -11,18 +13,20 @@ export interface Encargos {
   totalCentavos: number;
 }
 
-// Encargos do dia, exatamente a partir do cadastro do cliente.
+// Encargos do dia, exatamente a partir do cadastro da carteira. No v3 o
+// atraso conta do VENCIMENTO original (os encargos são do contrato), ainda
+// que a régua ande pela entrada.
 export function calcularEncargos(
   valorCentavos: number,
-  diasAtraso: number,
+  diasDeAtraso: number,
   multaPct: number | null,
   jurosMesPct: number | null,
 ): Encargos {
   const multa =
-    multaPct != null && diasAtraso > 0 ? Math.round((valorCentavos * multaPct) / 100) : null;
+    multaPct != null && diasDeAtraso > 0 ? Math.round((valorCentavos * multaPct) / 100) : null;
   const juros =
-    jurosMesPct != null && diasAtraso > 0
-      ? Math.round(((valorCentavos * jurosMesPct) / 100 / 30) * diasAtraso)
+    jurosMesPct != null && diasDeAtraso > 0
+      ? Math.round(((valorCentavos * jurosMesPct) / 100 / 30) * Math.min(diasDeAtraso, 540)) // cap 18 meses
       : null;
   return {
     multaCentavos: multa,
@@ -32,16 +36,20 @@ export function calcularEncargos(
 }
 
 export interface ContextoMensagem {
-  industria: string;
-  contatoNome: string; // responsável financeiro do lojista
+  escritorio: string; // marca ativa — em nome de quem a mensagem sai
+  oab: string;
+  credor: string; // credor original, sempre identificado (§6.4)
+  devedorNome: string;
+  tratamento: string; // primeiro nome (PF) ou razão social (PJ)
   numero: string;
   valorCentavos: number;
   vencimentoIso: string;
-  diasAtraso: number;
+  diasAtrasoDoVencimento: number;
   encargos: Encargos;
   multaCadastrada: boolean;
-  linkPortal: string;
+  linkPortal: string; // espaço do devedor /d/?t=
   parcelasMax: number;
+  tom: 'lembrete' | 'regularização';
 }
 
 const reais = (c: number) => moeda(c / 100);
@@ -58,96 +66,104 @@ function linhaValor(ctx: ContextoMensagem): string {
   return `valor ${reais(ctx.valorCentavos)}`;
 }
 
-// Uma mensagem por etapa. WhatsApp e e-mail usam o texto completo; SMS usa a
-// versão curta. A etapa "D+30" é a notificação formal (e-mail com confirmação
-// de leitura na Fase 2; carta com AR entra na Fase 3).
-export function textoDaMensagem(
-  etapa: string,
-  canal: string,
-  ctx: ContextoMensagem,
-): string {
-  const primeiroNome = ctx.contatoNome.split(' ')[0] || 'olá';
+// Uma mensagem por TIPO de passo (a etapa E+N varia com a faixa de entrada).
+// WhatsApp e e-mail usam o texto completo; SMS usa a versão curta.
+export function textoDaMensagem(tipo: string, canal: string, ctx: ContextoMensagem): string {
+  const nome = ctx.tratamento || 'olá';
   const venc = dataBr(ctx.vencimentoIso);
   const curto = canal === 'SMS';
 
-  switch (etapa) {
-    case 'D−3':
+  switch (tipo) {
+    case 'mensagem-boas-vindas': // E+0
       if (curto)
-        return `${ctx.industria}: o titulo ${ctx.numero} de ${reais(ctx.valorCentavos)} vence em ${venc}. 2a via e Pix: ${ctx.linkPortal}`;
+        return `${ctx.escritorio}: o debito ${ctx.numero} (${ctx.credor}) esta sob nossos cuidados. Valor e opcoes: ${ctx.linkPortal}`;
       return (
-        `Olá, ${primeiroNome}! Aqui é a assistente da ${ctx.industria}. ` +
-        `O título ${ctx.numero}, de ${reais(ctx.valorCentavos)}, vence em ${venc}. ` +
-        `Boleto e Pix estão no seu espaço: ${ctx.linkPortal} — qualquer dúvida, é só responder por aqui.`
+        `Olá, ${nome}. Aqui é o atendimento de ${ctx.escritorio}, responsável pelo débito ` +
+        `${ctx.numero}, de ${ctx.credor} — ${linhaValor(ctx)}, vencido em ${venc}. ` +
+        (ctx.tom === 'lembrete'
+          ? `Deve ter passado despercebido: as opções de pagamento estão no seu espaço: ${ctx.linkPortal}. `
+          : `As opções de pagamento e parcelamento estão no seu espaço: ${ctx.linkPortal}. `) +
+        `Qualquer dúvida, é só responder por aqui.`
       );
-    case 'D0':
+    case 'proposta': // E+2 / E+3
       if (curto)
-        return `${ctx.industria}: o titulo ${ctx.numero} de ${reais(ctx.valorCentavos)} vence hoje (${venc}). Pagamento: ${ctx.linkPortal}`;
+        return `${ctx.escritorio}: da para parcelar o debito ${ctx.numero}. Simule e veja o custo total antes de aceitar: ${ctx.linkPortal}`;
       return (
-        `${primeiroNome}, o título ${ctx.numero}, de ${reais(ctx.valorCentavos)}, vence hoje (${venc}). ` +
-        `O link de pagamento com boleto e Pix é este: ${ctx.linkPortal}. ` +
-        `Se o pagamento já foi feito, me avise por aqui que registro na hora.`
+        `${nome}, sobre o débito ${ctx.numero}, de ${ctx.credor} (${linhaValor(ctx)}): ` +
+        `dá para parcelar em até ${ctx.parcelasMax}x. Você simula no seu espaço e vê o custo total ` +
+        `antes de aceitar qualquer condição: ${ctx.linkPortal}. Dentro das condições aprovadas, a confirmação é na hora.`
       );
-    case 'D+3':
+    case 'mensagem-reforco': // E+7
       if (curto)
-        return `${ctx.industria}: o titulo ${ctx.numero} venceu em ${venc}. 2a via atualizada: ${ctx.linkPortal}`;
+        return `${ctx.escritorio}: seu espaco para resolver o debito ${ctx.numero}: ${ctx.linkPortal}`;
       return (
-        `${primeiroNome}, o título ${ctx.numero} venceu em ${venc} e segue em aberto — ` +
-        `${linhaValor(ctx)}. A 2ª via atualizada está aqui: ${ctx.linkPortal}. ` +
-        `Se houver qualquer divergência, responda esta mensagem e uma pessoa da nossa central resolve com você.`
+        `${nome}, este é o seu espaço para resolver o débito ${ctx.numero} (${ctx.credor}) ` +
+        `no seu tempo: 2ª via, Pix, parcelamento ou falar com uma pessoa — ${ctx.linkPortal}.`
       );
-    case 'D+7':
-      if (curto)
-        return `${ctx.industria}: podemos parcelar o titulo ${ctx.numero}. Proposta em ${ctx.linkPortal}`;
+    case 'mensagem-formal': // E+10 (sem ligação na carteira)
       return (
-        `${primeiroNome}, sobre o título ${ctx.numero} (venceu em ${venc}; ${linhaValor(ctx)}): ` +
-        `a ${ctx.industria} autorizou condições facilitadas — dá para parcelar em até ${ctx.parcelasMax}x. ` +
-        `Você monta a proposta direto aqui: ${ctx.linkPortal}. Dentro das condições combinadas, a aprovação é na hora.`
-      );
-    case 'D+10':
-      if (curto)
-        return `${ctx.industria}: titulo ${ctx.numero} em aberto ha ${ctx.diasAtraso} dias. Fale conosco: ${ctx.linkPortal}`;
-      return (
-        `${primeiroNome}, o título ${ctx.numero} está em aberto há ${ctx.diasAtraso} dias ` +
-        `(${linhaValor(ctx)}). Queremos resolver com você ainda esta semana — pagamento, acordo ou conversa ` +
-        `com uma pessoa da central: ${ctx.linkPortal}.`
-      );
-    case 'D+15':
-      return (
-        `Prezado(a) ${ctx.contatoNome},\n\n` +
-        `Registramos formalmente que o título ${ctx.numero}, emitido por ${ctx.industria}, ` +
-        `venceu em ${venc} e permanece em aberto (${linhaValor(ctx)}).\n\n` +
+        `Prezado(a) ${ctx.devedorNome},\n\n` +
+        `${ctx.escritorio} (${ctx.oab}) registra que o débito ${ctx.numero}, de ${ctx.credor}, ` +
+        `vencido em ${venc}, permanece em aberto (${linhaValor(ctx)}).\n\n` +
         `Pedimos o pagamento ou uma proposta de acordo em até 5 dias úteis: ${ctx.linkPortal}.\n\n` +
-        `Permanecendo em aberto, o débito segue as etapas previstas em contrato.\n\n` +
-        `Atenciosamente,\nCentral Sentinella, em nome de ${ctx.industria}`
+        `Se houver qualquer divergência, responda esta mensagem — a cobrança é revisada por uma pessoa.\n\n` +
+        `Atenciosamente,\n${ctx.escritorio}`
       );
-    case 'D+30':
+    case 'comunicação prévia': // E+15 — CDC, art. 43, §2º
       return (
-        `NOTIFICAÇÃO DE DÉBITO EM ABERTO\n\n` +
-        `Prezado(a) ${ctx.contatoNome},\n\n` +
-        `${ctx.industria} notifica que o título ${ctx.numero}, vencido em ${venc}, ` +
-        `permanece em aberto há ${ctx.diasAtraso} dias (${linhaValor(ctx)}).\n\n` +
-        `Solicitamos a regularização em até 5 dias úteis a contar do recebimento desta: ${ctx.linkPortal}.\n\n` +
-        `Não havendo regularização ou acordo, o título poderá ser levado a protesto e o débito ` +
-        `incluído nos cadastros de proteção ao crédito, conforme previsto em contrato — medidas que a ` +
-        `credora está apta a adotar.\n\n` +
-        `Esta notificação é enviada com confirmação de leitura.\n\n` +
-        `${ctx.industria} — por Central Sentinella`
+        `COMUNICAÇÃO PRÉVIA — CDC, art. 43, §2º\n\n` +
+        `Prezado(a) ${ctx.devedorNome},\n\n` +
+        `${ctx.escritorio} (${ctx.oab}), responsável pela cobrança do débito ${ctx.numero}, ` +
+        `de ${ctx.credor}, vencido em ${venc} (${linhaValor(ctx)}), comunica que, permanecendo o débito ` +
+        `em aberto após 10 dias do recebimento desta, ele poderá ser incluído nos cadastros de ` +
+        `proteção ao crédito, conforme autoriza o contrato.\n\n` +
+        `Para regularizar, negociar ou contestar o débito: ${ctx.linkPortal}.\n\n` +
+        `Esta comunicação é enviada com prova de envio.\n\n${ctx.escritorio}`
+      );
+    case 'notificação': // E+20 — assinada pelo advogado
+      return (
+        `NOTIFICAÇÃO EXTRAJUDICIAL\n\n` +
+        `Prezado(a) ${ctx.devedorNome},\n\n` +
+        `${ctx.escritorio} (${ctx.oab}), na qualidade de responsável pela cobrança do débito ` +
+        `${ctx.numero}, de ${ctx.credor}, vencido em ${venc} (${linhaValor(ctx)}), NOTIFICA ` +
+        `V.Sa. a regularizar o débito em até 5 dias úteis a contar do recebimento desta.\n\n` +
+        `Alternativas de pagamento, parcelamento e contestação: ${ctx.linkPortal}.\n\n` +
+        `Não havendo regularização, serão adotadas as medidas previstas em contrato e na lei.\n\n` +
+        `[assinatura do advogado responsável]\n${ctx.escritorio}`
+      );
+    case 'última proposta': // E+45
+      if (curto)
+        return `${ctx.escritorio}: ultima rodada de condicoes facilitadas para o debito ${ctx.numero}: ${ctx.linkPortal}`;
+      return (
+        `${nome}, antes de o débito ${ctx.numero} (${ctx.credor}) seguir para a próxima fase do ` +
+        `escritório, queremos tentar um acordo: condições facilitadas, com o custo total na sua ` +
+        `frente antes de aceitar — ${ctx.linkPortal}. Se preferir falar com uma pessoa, respondemos por aqui.`
       );
     default:
       return (
-        `${primeiroNome}, sobre o título ${ctx.numero} (${linhaValor(ctx)}): ` +
-        `fale com a gente em ${ctx.linkPortal}.`
+        `${nome}, sobre o débito ${ctx.numero} (${ctx.credor}; ${linhaValor(ctx)}): ` +
+        `seu espaço para resolver é ${ctx.linkPortal}.`
       );
   }
 }
 
-// Endereço de destino conforme o canal (contatos da empresa devedora — §3).
+// Endereço de destino conforme o canal — SEMPRE contatos do próprio devedor
+// (§3; contato de terceiro nem entra no banco). Ligação usa o telefone
+// pessoal; o do trabalho só existe no cadastro se o próprio devedor indicou.
 export function destinoParaCanal(
   canal: string,
-  lojista: { whatsapp: string; email: string; telefone: string; nome: string },
+  devedor: { whatsapp: string; email: string; telefone: string; telefoneTrabalho: string; nome: string },
 ): string {
-  if (canal === 'WhatsApp') return lojista.whatsapp || '(sem WhatsApp cadastrado)';
-  if (canal === 'SMS') return lojista.telefone || lojista.whatsapp || '(sem telefone cadastrado)';
-  if (canal === 'e-mail' || canal === 'carta') return lojista.email || '(sem e-mail cadastrado)';
-  return lojista.telefone || '(sem telefone cadastrado)';
+  if (canal === 'WhatsApp') return devedor.whatsapp || '(sem WhatsApp cadastrado)';
+  if (canal === 'SMS') return devedor.telefone || devedor.whatsapp || '(sem telefone cadastrado)';
+  if (canal === 'e-mail' || canal === 'carta') return devedor.email || '(sem e-mail cadastrado)';
+  return devedor.telefone || devedor.telefoneTrabalho || '(sem telefone cadastrado)';
+}
+
+// Tipo de passo → tipo de texto (os "mensagem" variam pela posição na régua).
+export function tipoDeTexto(tipoPasso: string, etapa: string): string {
+  if (tipoPasso !== 'mensagem') return tipoPasso;
+  if (etapa === 'E+0') return 'mensagem-boas-vindas';
+  if (etapa === 'E+7') return 'mensagem-reforco';
+  return 'mensagem-formal';
 }

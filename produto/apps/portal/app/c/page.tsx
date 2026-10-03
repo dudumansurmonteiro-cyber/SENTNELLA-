@@ -7,7 +7,7 @@
 
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { L, raizApp } from '../../lib/raiz';
+import { L, MODO_REAL, raizApp } from '../../lib/raiz';
 import { dataLonga, moedaCompacta, moedaCurta, pct } from '@sentinella/dados';
 import type { EntradaPortalCredor, PortalCredores } from '@sentinella/dados';
 
@@ -34,13 +34,22 @@ function Kpi({ rotulo, valor, detalhe }: { rotulo: string; valor: string; detalh
 function Conteudo() {
   const params = useSearchParams();
   const token = params.get('t') ?? '';
-  const [todos, setTodos] = useState<PortalCredores | null>(null);
+  const [entrada, setEntrada] = useState<EntradaPortalCredor | undefined>(undefined);
+  const [carregado, setCarregado] = useState(false);
 
   useEffect(() => {
-    fetch(`${raizApp()}dados/credores.json`).then((r) => r.json()).then(setTodos);
-  }, []);
-
-  const entrada: EntradaPortalCredor | undefined = todos?.[token];
+    (async () => {
+      if (MODO_REAL) {
+        // Fase 2: a leitura vem da API do servidor, regenerada do banco.
+        const r = await fetch(`${raizApp()}api/credor/${token}`);
+        setEntrada(r.ok ? await r.json() : undefined);
+      } else {
+        const todos: PortalCredores = await fetch(`${raizApp()}dados/credores.json`).then((r) => r.json());
+        setEntrada(todos[token]);
+      }
+      setCarregado(true);
+    })().catch(() => setCarregado(true));
+  }, [token]);
 
   const totais = useMemo(() => {
     if (!entrada) return null;
@@ -61,7 +70,7 @@ function Conteudo() {
     };
   }, [entrada]);
 
-  if (!todos) return <main className="container-g pt-10"><p className="suave">Carregando…</p></main>;
+  if (!carregado) return <main className="container-g pt-10"><p className="suave">Carregando…</p></main>;
   if (!entrada || !totais) {
     return (
       <main className="container-g pt-10">

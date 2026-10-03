@@ -1,23 +1,23 @@
-# Produto — Sentinella
+# Produto — Sentinella (v3)
 
-> **Nota do pivô v3 (02/10):** o brief vigente é o v3 (`../CLAUDE.md` — white
-> label para escritórios de cobrança). Este monorepo é a implementação das
-> Fases 1 e 2 do **v2** (`../BRIEF-V2.md`) e é a base de código sobre a qual a
-> Fase 1 do v3 será construída: hierarquia escritório → credor → carteira →
-> devedor, portais white label e console com troca de escritório.
+Monorepo do produto do brief v3 (`../CLAUDE.md`): a central de cobrança white
+label dos escritórios de advocacia. Hierarquia escritório → credor → carteira
+→ devedor → título; régua ancorada na **entrada do título na carteira**
+(E+0…E+60) com ajuste por faixa de atraso; regras do CDC e da Lei 14.181
+travadas no motor; painel do escritório, console com troca de escritório,
+portal do credor e espaço do devedor — tudo com a marca do escritório.
+(O brief v2 fica preservado em `../BRIEF-V2.md`; a implementação v2 foi
+reaproveitada e reancorada.)
 
-Monorepo do produto (brief v2, `../BRIEF-V2.md` §7 e §11): painel do cliente, console do
-analista, portal do lojista e, a partir da Fase 2, o **motor de régua real**
-sobre PostgreSQL — importação por planilha, fila de ações com conferência
-antes de cada envio, baixa de pagamentos e portal transacional. Nenhuma
-mensagem real é enviada em desenvolvimento: sem fornecedor definido e sem
-credenciais, todos os canais operam em modo simulado (§12).
+Nenhuma mensagem real é enviada em desenvolvimento: sem fornecedor definido e
+sem credenciais, todos os canais operam em modo simulado, e os dados de teste
+são sempre fictícios (CPF/CNPJ zerados, DDD 00, e-mails `.exemplo.invalid`).
 
 ## Rodar a demonstração (Fase 1 — sem banco)
 
 ```bash
 npm install
-npm run demo    # gera o seed estático e sobe painel (:3001) e portal (:3002)
+npm run demo    # gera o seed estático e sobe painel (:3001) e portais (:3002)
 ```
 
 ## Rodar a operação (Fase 2 — banco + motor real)
@@ -26,102 +26,122 @@ npm run demo    # gera o seed estático e sobe painel (:3001) e portal (:3002)
 npm install
 npm run banco            # PostgreSQL 16 local (ou use um Postgres seu via .env)
 cp .env.exemplo .env     # DATABASE_URL (e credenciais de canal, quando existirem)
-npm run db:migrar        # aplica o schema (packages/db/prisma)
+npm run db:migrar        # aplica o schema v3 (packages/db/prisma)
 
 npm run gerar:planilhas  # planilhas-modelo/ e dados-exemplo/ (determinístico)
-npm run regua:simular    # importa as planilhas semana a semana e roda o motor
-                         # real dia a dia por 90 dias (comportamento simulado)
-npm run exportar:demo    # banco → JSON no formato que o painel/portal consomem
-
-npm run build:real       # portal em modo real + painel (basePath /painel)
-npm run servidor         # http://localhost:3000 — portal, painel e API
+npm run regua:simular    # cadastra o escritório demo, importa as planilhas e
+                         # roda o motor real dia a dia por 90 dias
+npm run build:real       # exporta do banco + portal em modo real + painel (/painel)
+npm run servidor         # http://localhost:3000 — painel, portais e API
 ```
 
-No dia a dia de um cliente real, o ciclo é: `importar` (lojistas e títulos) →
-`regua:tick` (uma vez por dia, via cron) → `baixa` (pagamentos) →
-`rating:recalcular` (mensal). Exemplos:
+No dia a dia de um escritório, o ciclo é por **carteira**:
 
 ```bash
-npm run importar -- c1 lojistas.csv titulos.csv
-npm run regua:tick                       # ou -- --hoje=AAAA-MM-DD
-npm run baixa -- c1 pagamentos.csv
-npm run rating:recalcular
-npm run verificar                        # testes do motor (20 casos)
+npm run importar -- ca1 devedores.csv titulos.csv   # §3 já na porta: contato de
+                                                    # terceiro é descartado e relatado
+npm run regua:tick            # uma vez por dia (ou -- --hoje=AAAA-MM-DD)
+npm run assinar               # advogado assina as notificações preparadas
+npm run autorizar             # escritório autoriza negativação/protesto (com os
+                              # gates: comunicação prévia + prazo, nunca contestado)
+npm run baixa -- ca1 pagamentos.csv
+npm run rating:recalcular     # mensal
+npm run exportar:demo         # banco → JSON para painel e portais
+npm run verificar             # testes do motor (26 casos)
 ```
+
+## As superfícies no servidor (Fase 2)
+
+- `http://localhost:3000/painel/` — painel do escritório + console.
+- `http://localhost:3000/d/?t=<token>` — espaço do devedor. Construído com
+  `NEXT_PUBLIC_MODO=real`, as ações têm efeito real pela API: acordo dentro da
+  alçada com **custo total antes do aceite** (Lei 14.181, grava
+  `custoTotalAceitoEm`), contestação que **pausa a régua** e abre exceção,
+  pagamento informado (pausa até a conferência da baixa), pedido de não
+  contato por canal (a régua respeita; o caso vai ao analista) e falar com
+  uma pessoa.
+- `http://localhost:3000/c/?t=<token>` — portal do credor (leitura, sempre da
+  exportação viva do banco).
+- Os tokens de exemplo aparecem em `http://localhost:3000/` e em
+  `apps/servidor/dados/exemplos.json`.
 
 ## Estrutura
 
 ```
-apps/painel       # painel do cliente (§7.2) + console do analista (§7.4) — Next.js
-apps/portal       # portal do lojista (§7.3), mobile-first — Next.js
+apps/painel       # painel do escritório (§6.2) + console com troca de
+                  #   escritório ativo (§6.5) — Next.js, white label por CSS vars
+apps/portal       # espaço do devedor (§6.4) + portal do credor (§6.3)
                   #   NEXT_PUBLIC_MODO=real → lê e grava pela API (persistente)
-apps/servidor     # Fase 2: serve painel/portal construídos + API do portal
-                  #   (acordo, 2ª via com encargos do dia, pagamento informado,
-                  #   contestação, falar com pessoa) e JSONs vivos do banco
-packages/dados    # tipos do domínio (§8), rating A–E (§6), formatação pt-BR,
-                  #   PRNG e o seed estático da Fase 1
-packages/db       # Prisma + PostgreSQL: modelo do §8, valores em centavos,
-                  #   trilha de auditoria em toda mudança de estado
-packages/motor    # Fase 2: planilhas padrão, importação com relatório por
-                  #   linha, tick idempotente da régua (§3), conferência
-                  #   pré-envio, drivers de canal (simulado por padrão),
-                  #   baixa, rating sobre o banco, simulação e exportação
-planilhas-modelo/ # os três modelos que o financeiro preenche (com LEIA-ME)
-scripts/          # banco-local.sh, servidor estático e capturas (uso interno)
+apps/servidor     # Fase 2: serve painel/portais construídos + API do espaço
+                  #   do devedor + JSONs regenerados do banco (cache curto)
+packages/dados    # tipos do domínio, régua da entrada (§4) nos dois eixos,
+                  #   rating A–E, formatação pt-BR, PRNG, seed da Fase 1 e
+                  #   transporte (dump enxuto + hidratação)
+packages/db       # Prisma + PostgreSQL: modelo do §7 (multi-tenant por
+                  #   escritorioId, marca ativa, documentos jurídicos),
+                  #   centavos, auditoria em toda mudança de estado
+packages/motor    # Fase 2: planilhas padrão por carteira, importação com
+                  #   descarte de contato de terceiro (§3), tick idempotente
+                  #   da régua E+0…E+60, conferência pré-envio, assinatura e
+                  #   autorização como atos do escritório, dossiê E+60,
+                  #   baixa, acordos com custo total, rating, simulação de
+                  #   90 dias e exportação banco → superfícies
+planilhas-modelo/ # os três modelos que o escritório preenche (com LEIA-ME)
+scripts/          # banco-local.sh, montar-demo, verificadores (uso interno)
 ```
 
-## Como a Fase 2 cumpre o brief (§11)
+## Como a Fase 2 cumpre o brief v3
 
-- **Importação CSV** — separador `;` (padrão Excel BR) ou `,`, vírgula decimal,
-  datas dd/mm/aaaa; erros relatados linha a linha sem derrubar o arquivo;
-  reimportação atualiza por CNPJ/número sem duplicar; título pago não é
-  sobrescrito.
-- **Motor de régua com fila** — a fila é a tabela `AcaoCobranca`, processada por
-  um tick diário idempotente (chave única título+etapa+canal+tentativa), como
-  previsto no brief ("BullMQ + Redis **ou cron gerenciado**"). Respeita: Básico
-  termina no D+15 ("fora da régua"), duplicata antecipada notifica no D+15 e
-  prepara protesto até o D+25 (Lei 5.474/68), bloqueio de pedidos só com ERP
-  integrado e aprovação, ligações só em dias úteis/sábados e no máximo uma por
-  dia por devedor, lista de não-cobrança, catch-up de carteira que já chega em
-  atraso.
+- **Régua reancorada (§4)** — `passosDaRegua` monta o plano pelos dois eixos:
+  dias desde a **entrada na carteira** e faixa de atraso original (até 30 /
+  31–90 / 91–180 / >180 com régua curta). Título antecipado de devedor PJ
+  mantém protesto em até 30 dias do vencimento. A fila é a tabela
+  `AcaoCobranca`, processada por um tick diário idempotente (chave única
+  título+etapa+canal+tentativa).
+- **Seção 3 travada no motor, não configurável** — contato de terceiro é
+  descartado na importação (nunca entra no banco) e telefone de trabalho só
+  com indicação do próprio devedor; canal bloqueado pelo devedor bloqueia a
+  ação e abre exceção; contestação pausa o título na hora; **negativação só
+  com comunicação prévia registrada + prazo** (CDC art. 43 §2º) e nunca em
+  título contestado; ligações seg–sáb, uma por dia por devedor; textos passam
+  pela conferência de termos vedados, e menção a medida formal só nos
+  documentos formais da régua.
+- **Atos do escritório são do escritório** — a plataforma prepara; a
+  notificação só sai com assinatura do advogado (`assinar`), negativação e
+  protesto só com autorização título a título (`autorizar`), e o E+60 gera o
+  dossiê (JSON, com histórico completo) marcado como entregue ao judicial.
 - **Conferência antes de cada envio** — a mensagem renderizada é verificada
-  contra os dados importados (valores centavo a centavo, datas, multa/juros só
-  com cadastro, parcelas dentro da alçada); divergência bloqueia o envio e abre
-  exceção para o analista, com auditoria.
+  contra o banco (valores centavo a centavo, datas, parcelas dentro da alçada,
+  encargos só com cadastro da carteira); divergência bloqueia e abre exceção.
+- **White label em tudo** — toda ação, mensagem e documento registra a
+  `marcaAtiva` (em nome de qual escritório saiu); os portais aplicam a marca
+  do escritório; rating nunca aparece ao devedor.
+- **Acordos (Lei 14.181)** — as simulações mostram o custo total com os
+  encargos embutidos ANTES do aceite, o aceite usa exatamente a mesma base e
+  grava `custoTotalAceitoEm`.
 - **Canais** — interface de driver por canal; em desenvolvimento tudo é
-  simulado (§12); os drivers reais ficam atrás de credenciais e da definição de
-  fornecedor (PENDENCIAS.md) — sem isso, o envio cai no simulado e o motivo é
-  registrado no resumo do tick.
-- **Portal com 2ª via e proposta de acordo** — persistentes pela API: acordo
-  dentro da alçada aprovado na hora (fora vira exceção), 2ª via imprimível com
-  encargos do dia, pagamento informado pausa a cobrança até a conferência,
-  contestação marca o título e avisa; tudo com trilha de auditoria (§8).
-- **Baixa por importação** — marca pago, cancela ações futuras, avalia
-  promessas (pagar até a data combinada cumpre) e confere os "já paguei".
+  simulado; drivers reais ficam atrás de credenciais e fornecedor
+  (PENDENCIAS.md).
 
-A simulação (`regua:simular`) usa o motor de produção de ponta a ponta: gera as
-planilhas, importa semana a semana, roda o tick dia a dia e aplica um modelo
-determinístico de comportamento dos lojistas (respostas, promessas, pagamentos,
-contestações). A demonstração publicada nasce desse ciclo via `exportar:demo`.
+A simulação (`regua:simular`) usa o motor de produção de ponta a ponta: gera
+planilhas, importa por carteira, roda o tick dia a dia por 90 dias e aplica um
+modelo determinístico de comportamento dos devedores (respostas, promessas,
+acordos, contestações, pagamentos). A exportação (`exportar:demo`) faz o
+painel e os portais nascerem do banco real.
 
 ## Decisões registradas
 
-- **Fase 1 sem banco** (aceite pedia telas sobre dados de demonstração);
-  PostgreSQL + Prisma entraram na Fase 2 com o modelo do §8 em
-  `packages/db/prisma/schema.prisma`, dinheiro em centavos e auditoria.
-- **Fila por tabela + cron** no lugar de BullMQ/Redis — alternativa prevista no
-  brief, com idempotência garantida por chave única.
-- **Notificação extrajudicial (D+30)** sai por e-mail com confirmação de
-  leitura na Fase 2 (canal previsto no §3); carta com AR e o texto definitivo
-  do escritório parceiro entram na Fase 3 (pendência registrada).
-- **A demonstração publicada precisa funcionar montada em qualquer caminho**
-  (o visualizador de artifacts serve os arquivos sob um prefixo próprio):
+- **Fila por tabela + cron** no lugar de BullMQ/Redis — alternativa prevista
+  no brief, com idempotência garantida por chave única.
+- **A demonstração publicada precisa funcionar montada em qualquer caminho**:
   painel e portal calculam a raiz do app em tempo de execução
-  (`apps/*/lib/raiz.tsx` — âncoras comuns no lugar do `next/link`) e
-  `scripts/relativizar.mjs` torna relativos os caminhos absolutos dos assets
-  no HTML exportado antes de publicar.
-- **`apps/site` ainda não existe**: o site público segue no Webflow, por
-  decisão de produto.
-- **Ações do painel/console continuam demonstrativas** (aprovar autorização,
-  registrar ligação): painel e console ganham escrita na Fase 3; na Fase 2 a
-  escrita persistente está no portal do lojista e nos comandos do motor.
+  (`apps/*/lib/raiz.tsx`) e `scripts/relativizar.mjs` torna relativos os
+  caminhos dos assets antes de publicar.
+- **`apps/site` não existe**: o site público segue no Webflow, por decisão de
+  produto.
+- **Ações do painel/console continuam demonstrativas na interface**; na Fase
+  2 a escrita persistente está no espaço do devedor (API) e nos comandos do
+  motor (`assinar`, `autorizar`, `tick`, `baixa`). O console ganha escrita na
+  Fase 3.
+- **Portal do credor é leitura** (relatório vivo); o relatório mensal
+  automático por credor entra na Fase 3 com os canais reais.

@@ -1,6 +1,6 @@
-// Testes de integração do motor contra o PostgreSQL local (bash scripts/banco-local.sh).
-// Usam clientes de teste tx1/tx2/tx3 e limpam tudo ao final — nunca tocam nos
-// dados dos clientes de demonstração c1/c2/c3.
+// Testes de integração do motor v3 contra o PostgreSQL local
+// (bash scripts/banco-local.sh). Usam escritórios de teste tx1/tx2 e limpam
+// tudo ao final — nunca tocam no escritório de demonstração e1.
 
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -9,317 +9,446 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
 import { db } from '@sentinella/db';
-import { executarTick } from '../src/tick';
-import { importarLojistas, importarTitulos } from '../src/importar';
+import { BLOQUEIOS } from '@sentinella/dados';
+import { executarTick, assinarNotificacoes, autorizarMedidas } from '../src/tick';
+import { importarDevedores, importarTitulos } from '../src/importar';
 import { importarPagamentos } from '../src/baixa';
 import { addDias, deIso, paraIso } from '../src/datas';
 import { serializarPlanilha } from '../src/planilhas';
 
 const HOJE = '2026-10-05'; // segunda-feira
-const IDS = ['tx1', 'tx2', 'tx3'];
-const pasta = mkdtempSync(join(tmpdir(), 'sentinella-teste-'));
+const IDS = ['tx1', 'tx2'];
+const pasta = mkdtempSync(join(tmpdir(), 'sentinella-v3-teste-'));
 
 async function limparTestes() {
-  const where = { clienteId: { in: IDS } };
+  const where = { escritorioId: { in: IDS } };
   await db.registroAuditoria.deleteMany({ where });
   await db.mensagem.deleteMany({ where });
   await db.pagamentoInformado.deleteMany({ where });
   await db.promessa.deleteMany({ where });
-  await db.autorizacao.deleteMany({ where });
+  await db.documentoTitulo.deleteMany({ where: { documento: where } });
+  await db.documentoJuridico.deleteMany({ where });
   await db.acordoTitulo.deleteMany({ where: { acordo: where } });
   await db.acordo.deleteMany({ where });
   await db.excecao.deleteMany({ where });
   await db.acaoCobranca.deleteMany({ where });
   await db.titulo.deleteMany({ where });
-  await db.lojista.deleteMany({ where });
-  await db.cliente.deleteMany({ where: { id: { in: IDS } } });
+  await db.devedor.deleteMany({ where });
+  await db.carteira.deleteMany({ where });
+  await db.credor.deleteMany({ where });
+  await db.usuarioEscritorio.deleteMany({ where });
+  await db.escritorio.deleteMany({ where: { id: { in: IDS } } });
 }
 
-const baseCliente = {
-  cidade: 'Arapongas (PR)', setor: 'teste', erp: 'planilha', erpIntegrado: false,
-  alcadaDescontoMaxPct: 8, alcadaParcelasMax: 4, alcadaPrazoMaxDias: 45,
-  alcadaValorSempreAnalista: 2_000_000, valorLimiteLigacao: 300_000,
-};
-
 let seq = 0;
-async function novoLojista(clienteId: string) {
-  seq++;
-  return db.lojista.create({
+
+async function novoEscritorio(id: string) {
+  return db.escritorio.create({
     data: {
-      clienteId, nome: `Lojista Teste ${seq}`, cnpj: `00.000.9${String(seq).padStart(2, '0')}/0001-00`,
-      contatoNome: 'Contato Teste', token: `teste${clienteId}${seq}`,
-      email: `t${seq}@teste.exemplo.invalid`, whatsapp: '(00) 90000-0000',
+      id, nome: `Escritório Teste ${id}`, plano: 'Avançado',
+      marcaNome: `Teste ${id} Advogados`, marcaIniciais: 'TT',
+      oab: 'OAB/XX 99.999 (teste)', slaMin: 15,
+    },
+  });
+}
+
+async function novaCarteira(
+  escritorioId: string,
+  opts: Partial<{ canais: string[]; multaPct: number | null; jurosMesPct: number | null; devedoresTipo: string; parcelasMax: number }> = {},
+) {
+  seq++;
+  const credor = await db.credor.create({
+    data: {
+      id: `txcr${seq}`, escritorioId, nome: `Credor Teste ${seq}`,
+      setor: 'educação', token: `tokcr${seq}`,
+    },
+  });
+  return db.carteira.create({
+    data: {
+      id: `txca${seq}`, escritorioId, credorId: credor.id,
+      nome: `Carteira Teste ${seq}`, tipo: 'educação',
+      devedoresTipo: opts.devedoresTipo ?? 'PF e PJ',
+      descontoMaxPct: 10, parcelasMax: opts.parcelasMax ?? 6, prazoMaxDias: 90,
+      canais: opts.canais ?? ['WhatsApp', 'SMS', 'e-mail', 'carta', 'ligação'],
+      multaPct: opts.multaPct === undefined ? 2 : opts.multaPct,
+      jurosMesPct: opts.jurosMesPct === undefined ? 1 : opts.jurosMesPct,
+      entradaEm: deIso(HOJE),
+    },
+  });
+}
+
+async function novoDevedor(
+  carteira: { id: string; escritorioId: string; credorId: string },
+  opts: Partial<{ tipo: 'PF' | 'PJ'; canaisBloqueados: string[]; naoContatar: boolean }> = {},
+) {
+  seq++;
+  return db.devedor.create({
+    data: {
+      escritorioId: carteira.escritorioId, credorId: carteira.credorId, carteiraId: carteira.id,
+      tipo: opts.tipo ?? 'PF', nome: `Devedor Teste ${seq}`,
+      documento: opts.tipo === 'PJ' ? `00.000.9${String(seq).padStart(2, '0')}/0001-00` : `000.000.9${String(seq).padStart(2, '0')}-00`,
+      token: `tokdev${seq}`, whatsapp: '(00) 90000-0000', email: `t${seq}@teste.exemplo.invalid`,
+      telefone: '(00) 3000-0000',
+      canaisBloqueados: opts.canaisBloqueados ?? [], naoContatar: opts.naoContatar ?? false,
     },
   });
 }
 
 async function novoTitulo(
-  clienteId: string, lojistaId: string,
-  opts: { venc: string; valor?: number; antecipado?: boolean },
+  carteira: { id: string; escritorioId: string; credorId: string },
+  devedorId: string,
+  opts: { entrada: string; atraso: number; valor?: number; antecipado?: boolean; estado?: string; contestadoEm?: string; previaEm?: string },
 ) {
   seq++;
   return db.titulo.create({
     data: {
-      clienteId, lojistaId, numero: `${clienteId.toUpperCase()}-${1000 + seq}`,
-      valorCentavos: opts.valor ?? 150_000,
-      emissao: deIso(addDias(opts.venc, -30)), vencimento: deIso(opts.venc),
+      escritorioId: carteira.escritorioId, credorId: carteira.credorId, carteiraId: carteira.id,
+      devedorId, numero: `TX-${seq}`, valorCentavos: opts.valor ?? 120_000,
+      vencimento: deIso(addDias(opts.entrada, -opts.atraso)),
+      entradaCarteira: deIso(opts.entrada), atrasoOriginal: opts.atraso,
       antecipado: opts.antecipado ?? false,
+      estado: opts.estado ?? 'em cobrança',
+      contestadoEm: opts.contestadoEm ? new Date(`${opts.contestadoEm}T12:00:00Z`) : null,
+      comunicacaoPreviaEnviadaEm: opts.previaEm ? deIso(opts.previaEm) : null,
     },
   });
 }
 
 before(async () => {
   await limparTestes();
-  await db.cliente.create({
-    data: {
-      id: 'tx1', nome: 'Indústria Teste Avançado (fictícia)', plano: 'Avançado',
-      canais: ['WhatsApp', 'e-mail', 'carta', 'ligação'], multaPct: 2, jurosMesPct: 1,
-      ...baseCliente,
-    },
-  });
-  await db.cliente.create({
-    data: {
-      id: 'tx2', nome: 'Indústria Teste Básico (fictícia)', plano: 'Básico',
-      canais: ['WhatsApp', 'e-mail'], multaPct: null, jurosMesPct: null,
-      ...baseCliente,
-    },
-  });
-  await db.cliente.create({
-    data: {
-      id: 'tx3', nome: 'Indústria Teste Conferência (fictícia)', plano: 'Max',
-      canais: ['WhatsApp', 'e-mail', 'ligação'], multaPct: 2, jurosMesPct: 1,
-      ...baseCliente,
-    },
-  });
+  await novoEscritorio('tx1');
+  await novoEscritorio('tx2');
 });
-
 after(async () => {
   await limparTestes();
   await db.$disconnect();
 });
 
-test('importação valida linha a linha e relata erros sem derrubar o arquivo', async () => {
-  const lojistasCsv = join(pasta, 'lojistas.csv');
-  writeFileSync(lojistasCsv, serializarPlanilha(
-    ['cnpj', 'razao_social', 'cidade', 'contato_nome', 'contato_papel', 'nao_cobrar'],
-    [
-      ['00.000.801/0001-10', 'Loja Válida Um', 'Maringá', 'Ana', 'financeiro', 'não'],
-      ['123', 'Loja CNPJ Ruim', 'Maringá', 'Bia', 'financeiro', 'não'],
-      ['00.000.802/0001-20', '', 'Maringá', 'Caio', 'financeiro', 'não'],
-      ['00.000.803/0001-30', 'Loja Válida Dois', 'Londrina', 'Davi', 'sócio', 'sim'],
-      ['00.000.801/0001-10', 'Loja Repetida', 'Maringá', 'Eva', 'financeiro', 'não'],
-    ],
-  ));
-  const r = await importarLojistas('tx1', lojistasCsv);
-  assert.equal(r.criadas, 2);
-  assert.equal(r.erros.length, 3);
-  assert.deepEqual(r.erros.map((e) => e.linha), [3, 4, 6]);
+const tick = (hoje: string) => executarTick({ hoje, apenasEscritorios: IDS });
+const tickSo = (hoje: string, ids: string[]) => executarTick({ hoje, apenasEscritorios: ids });
 
-  const naoCobrar = await db.lojista.findFirst({ where: { clienteId: 'tx1', cnpj: '00.000.803/0001-30' } });
-  assert.equal(naoCobrar?.naoCobrar, true);
-
-  const titulosCsv = join(pasta, 'titulos.csv');
-  writeFileSync(titulosCsv, serializarPlanilha(
-    ['numero', 'cnpj_lojista', 'valor', 'emissao', 'vencimento', 'antecipado'],
-    [
-      ['TX1-1', '00.000.801/0001-10', '1.500,00', '01/09/2026', '01/10/2026', 'não'],
-      ['TX1-2', '00.000.801/0001-10', 'abc', '01/09/2026', '01/10/2026', 'não'],
-      ['TX1-3', '00.000.777/0001-77', '900,00', '01/09/2026', '01/10/2026', 'não'],
-      ['TX1-4', '00.000.801/0001-10', '2.000,00', '01/10/2026', '01/09/2026', 'não'],
-      ['TX1-1', '00.000.801/0001-10', '1.500,00', '01/09/2026', '01/10/2026', 'não'],
-    ],
-  ));
-  const rt = await importarTitulos('tx1', titulosCsv);
-  assert.equal(rt.criadas, 1);
-  assert.equal(rt.erros.length, 4);
-
-  // Reimportar atualiza pelo número, sem duplicar.
-  writeFileSync(titulosCsv, serializarPlanilha(
-    ['numero', 'cnpj_lojista', 'valor', 'emissao', 'vencimento', 'antecipado'],
-    [['TX1-1', '00.000.801/0001-10', '1.750,00', '01/09/2026', '01/10/2026', 'não']],
-  ));
-  const rt2 = await importarTitulos('tx1', titulosCsv);
-  assert.equal(rt2.atualizadas, 1);
-  const atualizado = await db.titulo.findUnique({
-    where: { clienteId_numero: { clienteId: 'tx1', numero: 'TX1-1' } },
-  });
-  assert.equal(atualizado?.valorCentavos, 175_000);
+test('E+0 agendado e enviado no dia da entrada, com a marca do escritório', async () => {
+  const carteira = await novaCarteira('tx1');
+  const devedor = await novoDevedor(carteira);
+  const titulo = await novoTitulo(carteira, devedor.id, { entrada: HOJE, atraso: 20 });
+  await tick(HOJE);
+  const mensagens = await db.mensagem.findMany({ where: { tituloId: titulo.id } });
+  assert.equal(mensagens.length, 1);
+  assert.match(mensagens[0].texto, /Teste tx1 Advogados/);
+  assert.match(mensagens[0].texto, /Credor Teste/);
+  assert.equal(mensagens[0].marcaAtiva, 'Teste tx1 Advogados');
+  const acoes = await db.acaoCobranca.findMany({ where: { tituloId: titulo.id } });
+  assert.ok(acoes.some((a) => a.etapa === 'E+0' && a.estado === 'finalizada'));
+  assert.ok(acoes.some((a) => a.etapa === 'E+2' && a.estado === 'agendada'));
 });
 
-test('janela de ligação (§3): agendada no sábado, adiada no domingo para segunda', async () => {
-  const lojista = await novoLojista('tx1');
-  await novoTitulo('tx1', lojista.id, { venc: addDias('2026-10-03', -10), valor: 500_000 });
-
-  // Sexta: o D+10 cai no sábado — pode ser agendado (sábado liga até 14h).
-  await executarTick({ hoje: '2026-10-02', apenasClientes: IDS });
-  const sabado = await db.acaoCobranca.findFirst({
-    where: { lojistaId: lojista.id, canal: 'ligação', etapa: 'D+10' },
+test('catch-up: entrada retroativa assume a etapa corrente sem disparar as anteriores', async () => {
+  const carteira = await novaCarteira('tx1', { canais: ['WhatsApp', 'e-mail'] });
+  const devedor = await novoDevedor(carteira);
+  const titulo = await novoTitulo(carteira, devedor.id, { entrada: addDias(HOJE, -12), atraso: 40 });
+  await tick(HOJE);
+  const feitas = await db.acaoCobranca.findMany({
+    where: { tituloId: titulo.id, estado: { in: ['finalizada', 'pendente'] } },
   });
-  assert.equal(paraIso(sabado!.dataProgramada), '2026-10-03');
-
-  // Domingo: sem tick no sábado, a ligação venceu — mas domingo não se liga.
-  const domingo = await executarTick({ hoje: '2026-10-04', apenasClientes: IDS });
-  assert.ok(domingo.ligacoesAdiadas >= 1);
-  const adiada = await db.acaoCobranca.findFirst({ where: { id: sabado!.id } });
-  assert.equal(paraIso(adiada!.dataProgramada), '2026-10-05');
-  assert.equal(adiada!.estado, 'agendada');
+  assert.equal(feitas.length, 1);
+  assert.equal(feitas[0].etapa, 'E+10'); // a mais recente vencida (sem ligação na carteira)
 });
 
-test('no máximo uma ligação por dia por devedor (§3)', async () => {
-  const lojista = await novoLojista('tx1');
-  await novoTitulo('tx1', lojista.id, { venc: addDias(HOJE, -10), valor: 800_000 });
-  await novoTitulo('tx1', lojista.id, { venc: addDias(HOJE, -10), valor: 600_000 });
-
-  const resumo = await executarTick({ hoje: HOJE, apenasClientes: IDS });
-  const doLojista = await db.acaoCobranca.findMany({
-    where: { lojistaId: lojista.id, canal: 'ligação', etapa: 'D+10' },
-    orderBy: { id: 'asc' },
-  });
-  assert.equal(doLojista.length, 2);
-  const emAndamento = doLojista.filter((a) => a.estado === 'em andamento');
-  const adiadas = doLojista.filter(
-    (a) => a.estado === 'agendada' && paraIso(a.dataProgramada) === '2026-10-06',
-  );
-  assert.equal(emAndamento.length, 1);
-  assert.equal(adiadas.length, 1);
-  assert.ok(resumo.ligacoesNaAgenda >= 1);
-});
-
-test('mensagem do dia sai simulada, com registro, e o tick é idempotente', async () => {
-  const lojista = await novoLojista('tx1');
-  const titulo = await novoTitulo('tx1', lojista.id, { venc: addDias(HOJE, 3), valor: 120_000 });
-
-  const r1 = await executarTick({ hoje: HOJE, apenasClientes: IDS });
-  assert.ok(r1.mensagensEnviadas >= 1);
-  const acao = await db.acaoCobranca.findFirst({ where: { tituloId: titulo.id, etapa: 'D−3' } });
-  assert.equal(acao?.estado, 'finalizada');
-  assert.equal(acao?.resultado, 'entregue (simulada)');
-  const mensagem = await db.mensagem.findFirst({ where: { acaoId: acao!.id } });
-  assert.equal(mensagem?.entrega, 'simulada');
-  assert.match(mensagem!.texto, /vence em 08\/10\/26/);
-
-  // Idempotência medida no que é nosso: nada do tx1 muda numa segunda rodada.
-  const antes = {
-    acoes: await db.acaoCobranca.count({ where: { clienteId: 'tx1' } }),
-    mensagens: await db.mensagem.count({ where: { clienteId: 'tx1' } }),
-  };
-  await executarTick({ hoje: HOJE, apenasClientes: IDS });
-  assert.equal(await db.acaoCobranca.count({ where: { clienteId: 'tx1' } }), antes.acoes);
-  assert.equal(await db.mensagem.count({ where: { clienteId: 'tx1' } }), antes.mensagens);
-  const duplicadas = await db.acaoCobranca.count({ where: { tituloId: titulo.id, etapa: 'D−3' } });
-  assert.equal(duplicadas, 1);
-});
-
-test('Básico termina no D+15: título sai da régua e nada é agendado além', async () => {
-  const lojista = await novoLojista('tx2');
-  const dentro = await novoTitulo('tx2', lojista.id, { venc: addDias(HOJE, -12), valor: 100_000 });
-  const alem = await novoTitulo('tx2', lojista.id, { venc: addDias(HOJE, -20), valor: 100_000 });
-
-  await executarTick({ hoje: HOJE, apenasClientes: IDS });
-
-  const foraDaRegua = await db.titulo.findUnique({ where: { id: alem.id } });
-  assert.equal(foraDaRegua?.estado, 'fora da régua');
-  assert.equal(await db.acaoCobranca.count({ where: { tituloId: alem.id } }), 0);
-
-  const noPrazo = await db.titulo.findUnique({ where: { id: dentro.id } });
-  assert.equal(noPrazo?.estado, 'vencido');
-  const etapas = await db.acaoCobranca.findMany({ where: { tituloId: dentro.id }, select: { etapa: true } });
-  assert.ok(etapas.length >= 1);
-  assert.ok(etapas.every((a) => !['D+30', 'D+45', 'bloqueio', 'jurídico'].includes(a.etapa)));
-
-  // Sem multa cadastrada, a mensagem não menciona multa (§12).
-  const mensagem = await db.mensagem.findFirst({ where: { tituloId: dentro.id } });
-  assert.ok(mensagem);
-  assert.ok(!/multa|juros/i.test(mensagem!.texto));
-});
-
-test('duplicata antecipada: notificação no D+15 (Lei 5.474/68) e protesto no D+25', async () => {
-  const lojista = await novoLojista('tx1');
-  const titulo = await novoTitulo('tx1', lojista.id, {
-    venc: addDias(HOJE, -16), valor: 150_000, antecipado: true,
-  });
-
-  await executarTick({ hoje: HOJE, apenasClientes: IDS });
-
-  const notificacao = await db.acaoCobranca.findFirst({
-    where: { tituloId: titulo.id, etapa: 'D+30' },
-  });
-  assert.ok(notificacao, 'a notificação antecipada deve existir');
-  assert.equal(notificacao!.estado, 'finalizada');
-  assert.match(notificacao!.descricao, /antecipada/);
-  const texto = await db.mensagem.findFirst({ where: { acaoId: notificacao!.id } });
-  assert.match(texto!.texto, /NOTIFICAÇÃO DE DÉBITO/);
-
-  // O protesto (D+45 da régua) fica programado para vencimento+25.
-  const naoAntecipado = await novoTitulo('tx1', lojista.id, { venc: addDias(HOJE, -16), valor: 150_000 });
-  await executarTick({ hoje: HOJE, apenasClientes: IDS });
-  const protestoAntecipado = await db.acaoCobranca.findFirst({ where: { tituloId: titulo.id, etapa: 'D+45' } });
-  const protestoNormal = await db.acaoCobranca.findFirst({ where: { tituloId: naoAntecipado.id, etapa: 'D+45' } });
-  if (protestoAntecipado)
-    assert.equal(paraIso(protestoAntecipado.dataProgramada), addDias(paraIso(titulo.vencimento), 25));
-  assert.equal(protestoNormal, null); // no D+16 o protesto do não antecipado (D+45) ainda nem entra no horizonte
-});
-
-test('conferência bloqueia mensagem divergente e abre exceção', async () => {
-  const lojista = await novoLojista('tx3');
-  const titulo = await novoTitulo('tx3', lojista.id, { venc: addDias(HOJE, -3), valor: 200_000 });
-
-  const resumo = await executarTick({
-    hoje: HOJE,
-    apenasClientes: IDS,
-    renderizador: (etapa, _canal, ctx) =>
-      `Sobre o título ${ctx.numero}: o valor em aberto é R$ 9.999,99 (${etapa}).`,
-  });
-  assert.ok(resumo.mensagensBloqueadas >= 1);
-
-  const acao = await db.acaoCobranca.findFirst({ where: { tituloId: titulo.id, etapa: 'D+3' } });
+test('canal bloqueado a pedido do devedor vira exceção e nada sai por ali', async () => {
+  const carteira = await novaCarteira('tx1');
+  const devedor = await novoDevedor(carteira, { canaisBloqueados: ['WhatsApp'] });
+  const titulo = await novoTitulo(carteira, devedor.id, { entrada: HOJE, atraso: 15 });
+  const resumo = await tick(HOJE);
+  assert.ok(resumo.bloqueiosConformidade >= 1);
+  const acao = await db.acaoCobranca.findFirst({ where: { tituloId: titulo.id, etapa: 'E+0' } });
   assert.equal(acao?.estado, 'bloqueada');
-  assert.match(acao!.motivoBloqueio ?? '', /não confere/);
-  assert.equal(await db.mensagem.count({ where: { acaoId: acao!.id } }), 0);
-
-  const excecao = await db.excecao.findFirst({ where: { tituloId: titulo.id } });
-  assert.equal(excecao?.estado, 'aberta');
-  assert.match(excecao!.motivo, /^Mensagem bloqueada/);
-  assert.equal(excecao!.slaMin, 5); // tx3 é Max
+  assert.equal(acao?.motivoBloqueio, BLOQUEIOS.canal);
+  assert.equal(await db.mensagem.count({ where: { tituloId: titulo.id } }), 0);
+  assert.equal(await db.excecao.count({ where: { tituloId: titulo.id } }), 1);
 });
 
-test('baixa por importação: pago, ações futuras canceladas, promessa cumprida', async () => {
-  const lojista = await novoLojista('tx1');
-  const titulo = await novoTitulo('tx1', lojista.id, { venc: addDias(HOJE, -5), valor: 130_000 });
-  await executarTick({ hoje: HOJE, apenasClientes: IDS });
+test('pedido de não contato total: nada é agendado', async () => {
+  const carteira = await novaCarteira('tx1');
+  const devedor = await novoDevedor(carteira, { naoContatar: true });
+  const titulo = await novoTitulo(carteira, devedor.id, { entrada: HOJE, atraso: 10 });
+  await tick(HOJE);
+  assert.equal(await db.acaoCobranca.count({ where: { tituloId: titulo.id } }), 0);
+});
 
-  await db.promessa.create({
+test('negativação sem comunicação prévia é barrada (CDC, art. 43, §2º)', async () => {
+  const carteira = await novaCarteira('tx1');
+  const devedor = await novoDevedor(carteira);
+  const titulo = await novoTitulo(carteira, devedor.id, { entrada: addDias(HOJE, -30), atraso: 25 });
+  // força a ação de negativação devida hoje, sem prévia registrada
+  await db.acaoCobranca.create({
     data: {
-      clienteId: 'tx1', lojistaId: lojista.id, tituloId: titulo.id,
-      para: deIso(addDias(HOJE, 2)), origem: 'ligação',
+      escritorioId: 'tx1', carteiraId: carteira.id, tituloId: titulo.id, devedorId: devedor.id,
+      etapa: 'E+30', canal: 'e-mail', quem: 'sistema', tipo: 'negativação',
+      descricao: 'Negativação/protesto', dataProgramada: deIso(HOJE), marcaAtiva: 'Teste tx1 Advogados',
     },
   });
-  const futuras = await db.acaoCobranca.count({
-    where: { tituloId: titulo.id, estado: 'agendada' },
-  });
-  assert.ok(futuras >= 1, 'deve haver ação futura agendada (D+7 no horizonte)');
+  await tick(HOJE);
+  const acao = await db.acaoCobranca.findFirst({ where: { tituloId: titulo.id, tipo: 'negativação' } });
+  assert.equal(acao?.estado, 'bloqueada');
+  assert.equal(acao?.motivoBloqueio, BLOQUEIOS.previa);
+  assert.equal((await db.titulo.findUnique({ where: { id: titulo.id } }))?.estado, 'em cobrança');
+});
 
-  const pagamentosCsv = join(pasta, 'pagamentos.csv');
-  writeFileSync(pagamentosCsv, serializarPlanilha(
-    ['numero_titulo', 'data_pagamento', 'valor_pago'],
+test('com prévia e prazo cumprido: medida aguarda autorização; autorizar muda o estado', async () => {
+  const carteira = await novaCarteira('tx1');
+  const pf = await novoDevedor(carteira, { tipo: 'PF' });
+  const pj = await novoDevedor(carteira, { tipo: 'PJ' });
+  const tituloPf = await novoTitulo(carteira, pf.id, { entrada: addDias(HOJE, -40), atraso: 20, previaEm: addDias(HOJE, -12) });
+  const tituloPj = await novoTitulo(carteira, pj.id, { entrada: addDias(HOJE, -40), atraso: 20, previaEm: addDias(HOJE, -12) });
+  for (const t of [tituloPf, tituloPj]) {
+    await db.acaoCobranca.create({
+      data: {
+        escritorioId: 'tx1', carteiraId: carteira.id, tituloId: t.id, devedorId: t.devedorId,
+        etapa: 'E+30', canal: 'e-mail', quem: 'sistema', tipo: 'negativação',
+        descricao: 'Negativação/protesto', dataProgramada: deIso(HOJE), marcaAtiva: 'Teste tx1 Advogados',
+      },
+    });
+  }
+  const resumo = await tick(HOJE);
+  assert.ok(resumo.medidasAguardandoAutorizacao >= 2);
+  const docs = await db.documentoJuridico.findMany({
+    where: { escritorioId: 'tx1', tipo: 'autorização', status: 'aguarda autorização' },
+  });
+  assert.ok(docs.length >= 2);
+
+  const r = await autorizarMedidas('tx1', HOJE, 'Dra. Teste — OAB/XX 1 (teste)');
+  assert.ok(r.autorizadas >= 2);
+  assert.equal((await db.titulo.findUnique({ where: { id: tituloPf.id } }))?.estado, 'negativado');
+  assert.equal((await db.titulo.findUnique({ where: { id: tituloPj.id } }))?.estado, 'protestado');
+});
+
+test('título contestado: medida barrada e cobrança pausada', async () => {
+  const carteira = await novaCarteira('tx1');
+  const devedor = await novoDevedor(carteira);
+  const titulo = await novoTitulo(carteira, devedor.id, {
+    entrada: addDias(HOJE, -40), atraso: 20,
+    previaEm: addDias(HOJE, -15), estado: 'contestado', contestadoEm: addDias(HOJE, -2),
+  });
+  await db.acaoCobranca.create({
+    data: {
+      escritorioId: 'tx1', carteiraId: carteira.id, tituloId: titulo.id, devedorId: devedor.id,
+      etapa: 'E+30', canal: 'e-mail', quem: 'sistema', tipo: 'negativação',
+      descricao: 'Negativação/protesto', dataProgramada: deIso(HOJE), marcaAtiva: 'Teste tx1 Advogados',
+    },
+  });
+  await tick(HOJE);
+  // título contestado está fora da régua: a ação órfã é cancelada, nunca executada
+  const acao = await db.acaoCobranca.findFirst({ where: { tituloId: titulo.id, tipo: 'negativação' } });
+  assert.equal(acao?.estado, 'cancelada');
+  assert.equal((await db.titulo.findUnique({ where: { id: titulo.id } }))?.estado, 'contestado');
+  assert.equal(await db.mensagem.count({ where: { tituloId: titulo.id } }), 0);
+});
+
+test('notificação só sai assinada pelo advogado', async () => {
+  const carteira = await novaCarteira('tx1');
+  const devedor = await novoDevedor(carteira);
+  const titulo = await novoTitulo(carteira, devedor.id, { entrada: HOJE, atraso: 15 });
+  await db.acaoCobranca.create({
+    data: {
+      escritorioId: 'tx1', carteiraId: carteira.id, tituloId: titulo.id, devedorId: devedor.id,
+      etapa: 'E+20', canal: 'e-mail', quem: 'sistema', tipo: 'notificação',
+      descricao: 'Notificação extrajudicial', dataProgramada: deIso(HOJE), marcaAtiva: 'Teste tx1 Advogados',
+    },
+  });
+  const resumo = await tick(HOJE);
+  assert.ok(resumo.notificacoesParaAssinar >= 1);
+  // Nada enviado ainda (a mensagem de E+0 é outra; filtramos pela notificação)
+  const doc = await db.documentoJuridico.findFirst({
+    where: { escritorioId: 'tx1', tipo: 'notificação extrajudicial', titulos: { some: { tituloId: titulo.id } } },
+  });
+  assert.equal(doc?.status, 'a assinar');
+
+  const assinadas = await assinarNotificacoes('tx1', HOJE, 'Dra. Teste — OAB/XX 1 (teste)');
+  assert.ok(assinadas >= 1);
+  const depois = await db.documentoJuridico.findUnique({ where: { id: doc!.id } });
+  assert.equal(depois?.status, 'enviado com prova');
+  assert.match(depois?.assinadoPor ?? '', /Dra\. Teste/);
+  const enviadas = await db.mensagem.findMany({ where: { tituloId: titulo.id, de: 'analista' } });
+  assert.equal(enviadas.length, 1);
+  assert.match(enviadas[0].texto, /Dra\. Teste/); // assinatura entrou no texto
+});
+
+test('conferência bloqueia: valor divergente, termo vedado e medida formal em mensagem comum', async () => {
+  const carteira = await novaCarteira('tx1', { canais: ['WhatsApp'] });
+  const d1 = await novoDevedor(carteira);
+  const d2 = await novoDevedor(carteira);
+  const d3 = await novoDevedor(carteira);
+  const t1 = await novoTitulo(carteira, d1.id, { entrada: HOJE, atraso: 10 });
+  const t2 = await novoTitulo(carteira, d2.id, { entrada: HOJE, atraso: 10 });
+  const t3 = await novoTitulo(carteira, d3.id, { entrada: HOJE, atraso: 10 });
+  const porDevedor: Record<string, string> = {
+    [d1.id]: 'Débito de R$ 9.999,99 em aberto.',
+    [d2.id]: 'Pague ou vamos acionar a polícia.',
+    [d3.id]: 'Seu nome pode ser protestado e negativado.',
+  };
+  const r2 = await executarTick({
+    hoje: HOJE,
+    apenasEscritorios: ['tx1'],
+    renderizador: (_tipo, _canal, ctx) => {
+      // associa pelo link do portal (token do devedor)
+      const token = ctx.linkPortal.split('t=')[1];
+      if (token === d1.token) return porDevedor[d1.id];
+      if (token === d2.token) return porDevedor[d2.id];
+      return porDevedor[d3.id];
+    },
+  });
+  assert.ok(r2.mensagensBloqueadas >= 3);
+  for (const t of [t1, t2, t3]) {
+    const acao = await db.acaoCobranca.findFirst({ where: { tituloId: t.id, etapa: 'E+0' } });
+    assert.equal(acao?.estado, 'bloqueada');
+  }
+  assert.equal(await db.mensagem.count({ where: { tituloId: { in: [t1.id, t2.id, t3.id] }, de: 'IA' } }), 0);
+});
+
+test('sem encargos cadastrados, mensagem que cita juros é bloqueada', async () => {
+  const carteira = await novaCarteira('tx1', { canais: ['WhatsApp'], multaPct: null, jurosMesPct: null });
+  const devedor = await novoDevedor(carteira);
+  const titulo = await novoTitulo(carteira, devedor.id, { entrada: HOJE, atraso: 10, valor: 50_000 });
+  const resumo = await executarTick({
+    hoje: HOJE,
+    apenasEscritorios: ['tx1'],
+    renderizador: () => 'Seu débito de R$ 500,00 está acumulando juros.',
+  });
+  assert.ok(resumo.mensagensBloqueadas >= 1);
+  const acao = await db.acaoCobranca.findFirst({ where: { tituloId: titulo.id, etapa: 'E+0' } });
+  assert.equal(acao?.estado, 'bloqueada');
+  assert.match(acao?.motivoBloqueio ?? '', /multa ou juros/);
+});
+
+test('ligação: nunca no domingo e no máximo uma por devedor por dia', async () => {
+  const domingo = '2026-10-04';
+  const carteira = await novaCarteira('tx1');
+  const devedor = await novoDevedor(carteira);
+  // duas ligações devidas para o mesmo devedor
+  const ta = await novoTitulo(carteira, devedor.id, { entrada: addDias(domingo, -5), atraso: 20 });
+  const tb = await novoTitulo(carteira, devedor.id, { entrada: addDias(domingo, -5), atraso: 20 });
+  for (const t of [ta, tb]) {
+    await db.acaoCobranca.create({
+      data: {
+        escritorioId: 'tx1', carteiraId: carteira.id, tituloId: t.id, devedorId: devedor.id,
+        etapa: 'E+5', canal: 'ligação', quem: 'analista', tipo: 'ligação',
+        descricao: 'Primeira ligação', dataProgramada: deIso(domingo), marcaAtiva: 'Teste tx1 Advogados',
+      },
+    });
+  }
+  const r1 = await tick(domingo);
+  assert.equal(r1.ligacoesNaAgenda, 0);
+  assert.ok(r1.ligacoesAdiadas >= 2);
+
+  const r2 = await tick(HOJE); // segunda
+  assert.equal(r2.ligacoesNaAgenda, 1);
+  assert.ok(r2.ligacoesAdiadas >= 1);
+});
+
+test('importação: terceiros descartados, trabalho sem indicação fora, dedupe e tipo da carteira', async () => {
+  const carteira = await novaCarteira('tx1', { devedoresTipo: 'PF' });
+  const arquivo = join(pasta, 'devedores.csv');
+  writeFileSync(arquivo, serializarPlanilha(
+    ['tipo', 'documento', 'nome', 'whatsapp', 'telefone_trabalho', 'telefone_trabalho_indicado_pelo_devedor', 'contato_terceiro_nome', 'contato_terceiro_telefone'],
     [
-      [titulo.numero, '05/10/2026', '1.300,00'],
-      ['NAO-EXISTE', '05/10/2026', ''],
+      ['PF', '000.000.801-00', 'Ana Teste Um', '(00) 90000-0001', '', 'não', 'Vizinho Zé', '(00) 98888-0000'],
+      ['PF', '000.000.802-00', 'Bia Teste Dois', '(00) 90000-0002', '(00) 3777-0000', 'não', '', ''],
+      ['PF', '000.000.803-00', 'Cris Teste Três', '(00) 90000-0003', '(00) 3777-1111', 'sim', '', ''],
+      ['PF', '000.000.801-00', 'Ana Repetida', '', '', 'não', '', ''],
+      ['PJ', '00.000.804/0001-00', 'Loja Teste', '', '', 'não', '', ''],
     ],
   ));
-  const { relatorio, baixa } = await importarPagamentos('tx1', pagamentosCsv);
-  assert.equal(baixa.baixados, 1);
-  assert.equal(relatorio.erros.length, 1);
+  const r = await importarDevedores(carteira.id, arquivo);
+  assert.equal(r.criadas, 3);
+  assert.equal(r.descartesTerceiro, 2); // terceiro da Ana + trabalho sem indicação da Bia
+  assert.ok(r.erros.some((e) => /repetido/.test(e.motivo)));
+  assert.ok(r.erros.some((e) => /só aceita devedores PF/.test(e.motivo)));
+  const ana = await db.devedor.findFirst({ where: { carteiraId: carteira.id, documento: '000.000.801-00' } });
+  assert.equal(ana?.nome, 'Ana Teste Um');
+  const bia = await db.devedor.findFirst({ where: { carteiraId: carteira.id, documento: '000.000.802-00' } });
+  assert.equal(bia?.telefoneTrabalho, '');
+  const cris = await db.devedor.findFirst({ where: { carteiraId: carteira.id, documento: '000.000.803-00' } });
+  assert.equal(cris?.telefoneTrabalho, '(00) 3777-1111');
+});
 
-  const pago = await db.titulo.findUnique({ where: { id: titulo.id } });
-  assert.equal(pago?.estado, 'pago');
-  assert.equal(pago?.valorPagoCentavos, 130_000);
-  assert.equal(await db.acaoCobranca.count({ where: { tituloId: titulo.id, estado: 'agendada' } }), 0);
-  const promessa = await db.promessa.findFirst({ where: { tituloId: titulo.id } });
-  assert.equal(promessa?.cumprida, true);
+test('importação de títulos: entrada, atraso original e antecipado só PJ; pago não é sobrescrito', async () => {
+  const carteira = await novaCarteira('tx1');
+  const pf = await novoDevedor(carteira, { tipo: 'PF' });
+  const arquivoT = join(pasta, 'titulos.csv');
+  writeFileSync(arquivoT, serializarPlanilha(
+    ['numero', 'documento_devedor', 'valor', 'vencimento', 'entrada_carteira', 'antecipado'],
+    [
+      ['TI-1', pf.documento, '1.000,00', '01/08/2026', '', 'não'],
+      ['TI-2', pf.documento, '2.000,00', '01/09/2026', '20/09/2026', 'não'],
+      ['TI-3', pf.documento, '3.000,00', '01/09/2026', '', 'sim'], // antecipado em PF → erro
+    ],
+  ));
+  const r = await importarTitulos(carteira.id, arquivoT, HOJE);
+  assert.equal(r.criadas, 2);
+  assert.ok(r.erros.some((e) => /antecipado só vale para devedor PJ/.test(e.motivo)));
+  const t1 = await db.titulo.findUnique({ where: { carteiraId_numero: { carteiraId: carteira.id, numero: 'TI-1' } } });
+  assert.equal(paraIso(t1!.entradaCarteira), HOJE);
+  assert.equal(t1!.atrasoOriginal, 65); // 01/08 → 05/10
+  const t2 = await db.titulo.findUnique({ where: { carteiraId_numero: { carteiraId: carteira.id, numero: 'TI-2' } } });
+  assert.equal(paraIso(t2!.entradaCarteira), '2026-09-20');
+  assert.equal(t2!.atrasoOriginal, 19);
 
-  const trilha = await db.registroAuditoria.findFirst({
-    where: { entidade: 'titulo', entidadeId: titulo.id, para: 'pago' },
+  // pago não é sobrescrito
+  await db.titulo.update({ where: { id: t1!.id }, data: { estado: 'pago', pagoEm: deIso(HOJE) } });
+  writeFileSync(arquivoT, serializarPlanilha(
+    ['numero', 'documento_devedor', 'valor', 'vencimento', 'entrada_carteira', 'antecipado'],
+    [['TI-1', pf.documento, '9.999,00', '01/08/2026', '', 'não']],
+  ));
+  const r2 = await importarTitulos(carteira.id, arquivoT, HOJE);
+  assert.equal(r2.ignoradas, 1);
+  const t1b = await db.titulo.findUnique({ where: { id: t1!.id } });
+  assert.equal(t1b!.valorCentavos, 100_000);
+});
+
+test('baixa: título pago cancela ações futuras e avalia promessa', async () => {
+  const carteira = await novaCarteira('tx1');
+  const devedor = await novoDevedor(carteira);
+  const titulo = await novoTitulo(carteira, devedor.id, { entrada: HOJE, atraso: 10 });
+  await tick(HOJE); // agenda E+2 etc.
+  await db.promessa.create({
+    data: {
+      escritorioId: 'tx1', devedorId: devedor.id, tituloId: titulo.id,
+      para: deIso(addDias(HOJE, 3)), origem: 'ligação',
+    },
   });
-  assert.ok(trilha, 'a baixa precisa deixar trilha de auditoria');
+  const arquivoP = join(pasta, 'pagamentos.csv');
+  writeFileSync(arquivoP, serializarPlanilha(
+    ['numero_titulo', 'data_pagamento', 'valor_pago'],
+    [[titulo.numero, '06/10/2026', '']],
+  ));
+  const { baixa } = await importarPagamentos(carteira.id, arquivoP);
+  assert.equal(baixa.baixados, 1);
+  assert.equal(baixa.promessasCumpridas, 1);
+  assert.equal(await db.acaoCobranca.count({ where: { tituloId: titulo.id, estado: 'agendada' } }), 0);
+});
+
+test('tick é idempotente: rodar duas vezes no mesmo dia não duplica nada', async () => {
+  const carteira = await novaCarteira('tx1');
+  const devedor = await novoDevedor(carteira);
+  const titulo = await novoTitulo(carteira, devedor.id, { entrada: HOJE, atraso: 10 });
+  await tick(HOJE);
+  const mensagensAntes = await db.mensagem.count({ where: { tituloId: titulo.id } });
+  const acoesAntes = await db.acaoCobranca.count({ where: { tituloId: titulo.id } });
+  const r2 = await tick(HOJE);
+  assert.equal(await db.mensagem.count({ where: { tituloId: titulo.id } }), mensagensAntes);
+  assert.equal(await db.acaoCobranca.count({ where: { tituloId: titulo.id } }), acoesAntes);
+});
+
+test('isolamento de tenant: o tick de um escritório não executa ações do outro', async () => {
+  const c1 = await novaCarteira('tx1');
+  const c2 = await novaCarteira('tx2');
+  const d1 = await novoDevedor(c1);
+  const d2 = await novoDevedor(c2);
+  const t1 = await novoTitulo(c1, d1.id, { entrada: HOJE, atraso: 10 });
+  const t2 = await novoTitulo(c2, d2.id, { entrada: HOJE, atraso: 10 });
+  await tickSo(HOJE, ['tx1']);
+  assert.ok((await db.mensagem.count({ where: { tituloId: t1.id } })) >= 1);
+  assert.equal(await db.mensagem.count({ where: { tituloId: t2.id } }), 0);
+  const acaoT2 = await db.acaoCobranca.findFirst({ where: { tituloId: t2.id, etapa: 'E+0' } });
+  assert.equal(acaoT2, null); // nem agendadas: o agendamento também é por escritório
 });

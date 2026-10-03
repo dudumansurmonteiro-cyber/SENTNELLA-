@@ -18,6 +18,8 @@
     "importar": "tsx packages/motor/src/cli.ts importar",
     "baixa": "tsx packages/motor/src/cli.ts baixa",
     "regua:tick": "tsx packages/motor/src/cli.ts tick",
+    "assinar": "tsx packages/motor/src/cli.ts assinar",
+    "autorizar": "tsx packages/motor/src/cli.ts autorizar",
     "regua:simular": "tsx packages/motor/src/cli.ts simular",
     "rating:recalcular": "tsx packages/motor/src/cli.ts rating",
     "exportar:demo": "tsx packages/motor/src/cli.ts exportar",

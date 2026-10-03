@@ -123,3 +123,16 @@ export function cnpjNormalizado(texto: string): string | null {
   if (digitos.length !== 14) return null;
   return `${digitos.slice(0, 2)}.${digitos.slice(2, 5)}.${digitos.slice(5, 8)}/${digitos.slice(8, 12)}-${digitos.slice(12)}`;
 }
+
+export function cpfNormalizado(texto: string): string | null {
+  const digitos = texto.replace(/\D/g, '');
+  if (digitos.length !== 11) return null;
+  return `${digitos.slice(0, 3)}.${digitos.slice(3, 6)}.${digitos.slice(6, 9)}-${digitos.slice(9)}`;
+}
+
+// CPF (PF), CNPJ (PJ) ou qualquer um dos dois (tipo null) — formatado.
+export function documentoNormalizado(texto: string, tipo: 'PF' | 'PJ' | null): string | null {
+  if (tipo === 'PF') return cpfNormalizado(texto);
+  if (tipo === 'PJ') return cnpjNormalizado(texto);
+  return cpfNormalizado(texto) ?? cnpjNormalizado(texto);
+}

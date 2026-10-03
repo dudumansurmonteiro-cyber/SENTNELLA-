@@ -1,0 +1,14 @@
+Planilhas-modelo da Sentinella (v3) — uma por CARTEIRA.
+
+devedores.csv — tipo (PF/PJ), documento (CPF/CNPJ), contatos DO PRÓPRIO
+devedor. Colunas de contato de terceiro existem no modelo apenas para
+deixar a regra explícita: qualquer valor nelas é DESCARTADO na importação
+(CDC — só falamos com o próprio devedor). telefone_trabalho só entra se
+telefone_trabalho_indicado_pelo_devedor = sim.
+
+titulos.csv — numero, documento_devedor, valor (vírgula decimal),
+vencimento (dd/mm/aaaa), entrada_carteira (vazio = dia da importação),
+antecipado (sim só para duplicata de devedor PJ).
+
+pagamentos.csv — baixa pelo extrato da conta do credor/escritório;
+valor_pago vazio = valor do título.

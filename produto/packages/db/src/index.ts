@@ -1,13 +1,13 @@
-// Cliente Prisma compartilhado + auditoria de mudanças de estado (§8).
+// Cliente Prisma compartilhado + auditoria de mudanças de estado (§7).
 
 import { PrismaClient } from '@prisma/client';
 
 export const db = new PrismaClient();
 
-export type Autor = 'IA' | 'analista' | 'cliente' | 'lojista' | 'sistema';
+export type Autor = 'IA' | 'analista' | 'escritório' | 'credor' | 'devedor' | 'sistema';
 
 export async function auditar(
-  clienteId: string,
+  escritorioId: string,
   entidade: string,
   entidadeId: string,
   de: string | null,
@@ -16,7 +16,7 @@ export async function auditar(
   detalhe?: string,
 ) {
   await db.registroAuditoria.create({
-    data: { clienteId, entidade, entidadeId, de, para, autor, detalhe },
+    data: { escritorioId, entidade, entidadeId, de, para, autor, detalhe },
   });
 }
 
