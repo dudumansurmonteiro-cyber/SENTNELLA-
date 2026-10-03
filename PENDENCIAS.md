@@ -46,21 +46,29 @@ definição" — nunca com valores inventados.
 
 ## Estado das superfícies
 
-- **Pivô v3 em andamento.** O v3 (white label para escritórios) foi adotado em
-  02/10 como fonte de verdade; o v2 completo está preservado em `BRIEF-V2.md`.
-- **Site (Webflow)** — ainda no posicionamento v2 (cobrança para indústrias),
-  publicado em https://eduardos-top-notch-site-488aab.webflow.io . O pivô do
-  site para o v3 (§6.1: hero "Sua marca na frente...", seção white label,
-  conformidade, FAQ de escritórios, formulário novo, /white-label e
-  /conformidade) ainda não foi executado.
-- **Produto (`produto/`)** — implementação das Fases 1 e 2 do v2 (painel,
-  console, portal, motor de régua real sobre PostgreSQL). É a base de código
-  sobre a qual a Fase 1 do v3 será construída (hierarquia escritório → credor
-  → carteira → devedor, portais white label, console com troca de escritório).
-  Demo navegável (dados do v2): https://claude.ai/artifact/AZcXJ7wAB4rgmXZAEWoP5v
-- **Registro**: a decisão de 29/09 sobre lembretes D−20/D−5 do v2 está
-  documentada em `BRIEF-V2.md`; a régua do v3 é reancorada na entrada da
-  carteira (E+0…E+60) e a implementará no formato novo.
+- **Fase 1 do v3 entregue (03/10).** Seed com 3 escritórios fictícios (cores
+  próprias), 8 credores, 15 carteiras, 6.000 devedores PF/PJ e 20.000 títulos
+  em 90 dias; painel do escritório white label; console com troca de
+  escritório (faixa colorida do escritório ativo); espaço do devedor e portal
+  do credor com a marca de cada escritório. O v2 completo segue preservado em
+  `BRIEF-V2.md`.
+- **Demonstração publicada (v3)** — mesma URL de sempre:
+  https://claude.ai/artifact/AZcXJ7wAB4rgmXZAEWoP5v (hub com os quatro
+  acessos; montagem reproduzível por `produto/scripts/montar-demo.mjs`).
+- **Site (Webflow)** — pivô v3 publicado em
+  https://eduardos-top-notch-site-488aab.webflow.io : hero "Sua marca na
+  frente. Nossa operação atrás.", seção white label, régua E+0→E+60,
+  planos por devedores ativos ("a partir de"), seção e página de
+  conformidade, FAQ com 12 perguntas, formulário de escritórios, páginas
+  /white-label e /conformidade novas, /demo com capturas do v3;
+  /portal-do-lojista saiu do ar (rascunho).
+- **Fase 2 do v3 (motor real)** — próxima: reancorar schema Prisma e motor
+  na hierarquia v3 com os gates do CDC; até lá, `packages/db`, `packages/motor`
+  e `apps/servidor` continuam na forma do v2 e os testes antigos não compilam
+  contra os tipos novos.
+- **Âncoras internas da home** — as seções white label e conformidade
+  reutilizam os ids antigos (#painel/#portal/#sla seguem no DOM; a troca
+  cosmética de ids foi deixada de lado nesta rodada).
 
 ## Nota de vocabulário
 
