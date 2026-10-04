@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="680" height="240" viewBox="0 0 680 240" role="img" aria-label="Sentinella">
+  <!-- Escudo com olho — versão preta para fundos claros -->
+  <g>
+    <path fill="#111111" d="M46 30 H154 Q166 30 166 42 V118 Q166 164 100 210 Q34 164 34 118 V42 Q34 30 46 30 Z"/>
+    <path fill="#FFFFFF" d="M61 112 Q100 79 139 112 Q100 145 61 112 Z"/>
+    <circle cx="100" cy="112" r="14" fill="#111111"/>
+  </g>
+  <text x="210" y="138" font-family="Arial, Helvetica, sans-serif" font-size="72" fill="#111111">Sentinella</text>
+</svg>

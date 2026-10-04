@@ -1,0 +1,81 @@
+---
+import Base from '../layouts/Base.astro';
+import FormularioContato from '../components/FormularioContato.astro';
+---
+<Base
+  titulo="Projeto-piloto — Sentinella"
+  descricao="Construção com desconto e três meses de operação, em troca de um caso de uso divulgável. Para empresas de médio porte no Brasil."
+>
+  <section class="section">
+    <div class="container">
+      <h1>Projeto-piloto</h1>
+      <p class="section-intro">
+        Estamos abrindo a operação com poucos clientes fundadores. O piloto existe para
+        colocar o modelo à prova em operação real — e para construir, junto com você, o
+        primeiro caso divulgável da Sentinella.
+      </p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <h2>O que oferecemos</h2>
+      <ul class="lista">
+        <li>Construção do agente com desconto (<span class="sob-consulta">condições sob consulta</span>).</li>
+        <li>3 meses de operação com a central humana das 8h às 22h.</li>
+        <li>Revisão quinzenal, relatório mensal e Score Sentinella desde o primeiro mês.</li>
+        <li>Prioridade no roadmap de integrações.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <h2>O que pedimos em troca</h2>
+      <ul class="lista">
+        <li>Um caso de uso divulgável: autorização para contar, com números, o que construímos e operamos para você.</li>
+        <li>Participação nas revisões quinzenais durante o piloto.</li>
+        <li>Alguém do seu lado para aprovar regras e receber transferências.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <h2>Quem se qualifica</h2>
+      <ul class="lista">
+        <li>Empresa de médio porte no Brasil (50 a 1.500 funcionários).</li>
+        <li>IA em contato com cliente ou com decisão automatizada: atendimento, vendas, cobrança ou triagem.</li>
+        <li>Setores prioritários: fintechs e crédito, healthtechs e clínicas, varejo e e-commerce, serviços e educação.</li>
+        <li>Um responsável interno disponível para as aprovações da homologação.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container contato-grade">
+      <div>
+        <h2>Vamos começar pelo diagnóstico.</h2>
+        <p class="section-intro">
+          Conte onde a IA entraria na sua operação e o volume aproximado de conversas.
+          Respondemos em até um dia útil.
+        </p>
+      </div>
+      <FormularioContato origem="piloto" />
+    </div>
+  </section>
+</Base>
+
+<style>
+  .contato-grade {
+    display: grid;
+    gap: 2.5rem;
+  }
+  @media (min-width: 900px) {
+    .contato-grade {
+      grid-template-columns: 5fr 6fr;
+      gap: 4rem;
+      align-items: start;
+    }
+  }
+</style>

@@ -1,0 +1,380 @@
+// Modelo de dados da Sentinella v3 (CLAUDE.md §7).
+// Multi-tenant em três níveis: Escritório (tenant) → Credor → Carteira →
+// Devedor → Título. Toda tabela de negócio carrega escritorioId; da carteira
+// para baixo, também credorId e carteiraId. Estados em pt-BR (uniões em
+// @sentinella/dados). Valores monetários em centavos (Int).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Escritorio {
+  id                     String   @id
+  nome                   String
+  oab                    String   @default("")
+  cidade                 String   @default("")
+  plano                  String // Básico | Avançado | Max
+  // Marca white label aplicada a mensagens, portais e documentos (§9).
+  marcaNome              String
+  marcaIniciais          String   @default("")
+  corPrimaria            String   @default("#0E4A45")
+  corClara               String   @default("#7FB3AC")
+  mostrarOperadora       Boolean  @default(true) // rodapé "operada por" (removível no Max)
+  whatsappNumero         String   @default("") // número do escritório [BSP em definição]
+  slaMin                 Int? // null = equipe do próprio escritório (Básico)
+  retencaoGravacoesAnos  Int      @default(5)
+  criadoEm               DateTime @default(now())
+
+  usuarios    UsuarioEscritorio[]
+  credores    Credor[]
+  carteiras   Carteira[]
+  devedores   Devedor[]
+  titulos     Titulo[]
+  acoes       AcaoCobranca[]
+  mensagens   Mensagem[]
+  excecoes    Excecao[]
+  acordos     Acordo[]
+  documentos  DocumentoJuridico[]
+  promessas   Promessa[]
+  pagamentos  PagamentoInformado[]
+  auditoria   RegistroAuditoria[]
+}
+
+model UsuarioEscritorio {
+  id           String     @id @default(cuid())
+  escritorioId String
+  escritorio   Escritorio @relation(fields: [escritorioId], references: [id])
+  nome         String
+  papel        String // sócio | advogado | coordenador | negociador | financeiro
+  oab          String? // obrigatória para assinar notificação
+
+  @@index([escritorioId])
+}
+
+model Credor {
+  id             String     @id @default(cuid())
+  escritorioId   String
+  escritorio     Escritorio @relation(fields: [escritorioId], references: [id])
+  nome           String
+  setor          String // educação | saúde | condomínio | varejo | financeiro | indústria | outros
+  contatoNome    String     @default("")
+  honorariosPct  Float? // regra INFORMATIVA do contrato escritório↔credor (§6.2)
+  token          String     @unique // acesso do portal do credor
+  criadoEm       DateTime   @default(now())
+
+  carteiras Carteira[]
+  devedores Devedor[]
+  titulos   Titulo[]
+
+  @@index([escritorioId])
+}
+
+model Carteira {
+  id              String     @id @default(cuid())
+  escritorioId    String
+  escritorio      Escritorio @relation(fields: [escritorioId], references: [id])
+  credorId        String
+  credor          Credor     @relation(fields: [credorId], references: [id])
+  nome            String
+  tipo            String // tipo de dívida (setorial)
+  devedoresTipo   String     @default("PF e PJ") // PF | PJ | PF e PJ
+  // Alçada da IA e dos negociadores (§4).
+  descontoMaxPct  Float
+  parcelasMax     Int
+  prazoMaxDias    Int
+  entradaMinPct   Float      @default(10)
+  canais          String[] // ordem de preferência
+  // Encargos SÓ com cadastro (regra do v2 §12 que continua).
+  multaPct        Float?
+  jurosMesPct     Float?
+  // LGPD por carteira (§3): base legal e papel de controlador registrados.
+  baseLegal       String     @default("execução de contrato")
+  controlador     String     @default("credor") // credor | credor e escritório
+  contaEmissora   String     @default("conta do credor") // boleto/Pix nunca da Sentinella
+  reguaPerfil     String     @default("padrão") // padrão | personalizada (Max)
+  entradaEm       DateTime   @db.Date
+  criadoEm        DateTime   @default(now())
+
+  devedores Devedor[]
+  titulos   Titulo[]
+  acoes     AcaoCobranca[]
+
+  @@index([escritorioId])
+  @@index([credorId])
+}
+
+model Devedor {
+  id               String     @id @default(cuid())
+  escritorioId     String
+  escritorio       Escritorio @relation(fields: [escritorioId], references: [id])
+  credorId         String
+  credor           Credor     @relation(fields: [credorId], references: [id])
+  carteiraId       String
+  carteira         Carteira   @relation(fields: [carteiraId], references: [id])
+  tipo             String // PF | PJ
+  nome             String
+  documento        String // CPF/CNPJ (fictício nos dados de teste)
+  cidade           String     @default("")
+  // Contatos do PRÓPRIO devedor — contato de terceiro é descartado na
+  // importação e nunca chega ao banco (§3).
+  whatsapp         String     @default("")
+  email            String     @default("")
+  telefone         String     @default("")
+  telefoneTrabalho String     @default("") // só se o próprio devedor indicou
+  token            String     @unique // espaço do devedor por link protegido
+  // Travas do CDC/Lei 14.181 (§3).
+  canaisBloqueados String[]   @default([]) // pedido de não contato por canal
+  naoContatar      Boolean    @default(false) // pedido total → só analista decide
+  vulneravel       Boolean    @default(false) // declarou vulnerabilidade
+  naoCobrar        Boolean    @default(false) // bloqueio do escritório
+  // Rating interno (nunca vai ao devedor).
+  ratingLetra      String?
+  ratingTotal      Int?
+  ratingDetalhe    Json?
+  ratingNovo       Boolean    @default(true)
+  horasRespostaMedia Float?
+  atualizadoEm     DateTime   @updatedAt
+
+  titulos    Titulo[]
+  acoes      AcaoCobranca[]
+  mensagens  Mensagem[]
+  excecoes   Excecao[]
+  acordos    Acordo[]
+  promessas  Promessa[]
+  pagamentos PagamentoInformado[]
+  documentos DocumentoJuridico[]
+
+  @@unique([carteiraId, documento])
+  @@index([escritorioId])
+  @@index([carteiraId])
+}
+
+model Titulo {
+  id                        String    @id @default(cuid())
+  escritorioId              String
+  escritorio                Escritorio @relation(fields: [escritorioId], references: [id])
+  credorId                  String
+  credor                    Credor    @relation(fields: [credorId], references: [id])
+  carteiraId                String
+  carteira                  Carteira  @relation(fields: [carteiraId], references: [id])
+  devedorId                 String
+  devedor                   Devedor   @relation(fields: [devedorId], references: [id])
+  numero                    String
+  valorCentavos             Int
+  vencimento                DateTime  @db.Date
+  // A régua do v3 é ancorada aqui (§4):
+  entradaCarteira           DateTime  @db.Date
+  atrasoOriginal            Int // dias de atraso quando entrou
+  antecipado                Boolean   @default(false) // PJ: protesto até 30d do vencimento
+  estado                    String    @default("em cobrança")
+  // Gates do CDC (§3):
+  contestadoEm              DateTime? // pausa a régua até decisão do escritório
+  contestacaoMotivo         String?
+  comunicacaoPreviaEnviadaEm DateTime? @db.Date // art. 43 §2º — antes de negativar
+  comunicacaoPreviaProva    String? // id/descrição da prova de envio
+  pagoEm                    DateTime? @db.Date
+  valorPagoCentavos         Int?
+  origem                    String    @default("csv")
+  criadoEm                  DateTime  @default(now())
+
+  acoes         AcaoCobranca[]
+  acordoTitulos AcordoTitulo[]
+  excecoes      Excecao[]
+  promessas     Promessa[]
+  pagamentos    PagamentoInformado[]
+  documentos    DocumentoTitulo[]
+
+  @@unique([carteiraId, numero])
+  @@index([escritorioId, estado])
+  @@index([carteiraId, estado])
+  @@index([escritorioId, entradaCarteira])
+}
+
+// A fila da régua: ações agendadas, processadas pelo tick idempotente
+// (cron gerenciado — alternativa prevista no brief a BullMQ/Redis).
+model AcaoCobranca {
+  id                  String    @id @default(cuid())
+  escritorioId        String
+  escritorio          Escritorio @relation(fields: [escritorioId], references: [id])
+  carteiraId          String
+  carteira            Carteira  @relation(fields: [carteiraId], references: [id])
+  tituloId            String
+  titulo              Titulo    @relation(fields: [tituloId], references: [id])
+  devedorId           String
+  devedor             Devedor   @relation(fields: [devedorId], references: [id])
+  etapa               String // E+0 … E+60 (régua da entrada)
+  canal               String
+  quem                String // IA | analista | sistema
+  tipo                String // mensagem | proposta | ligação | comunicação prévia | notificação | negativação | última proposta | judicial
+  descricao           String
+  dataProgramada      DateTime  @db.Date
+  tentativa           Int       @default(1)
+  estado              String    @default("agendada")
+  resultado           String?
+  mensagemRenderizada String?
+  motivoBloqueio      String? // trava da seção 3 que agiu — visível no painel
+  // Marca ativa (§7): em nome de qual escritório a ação saiu.
+  marcaAtiva          String
+  executadaEm         DateTime?
+
+  @@unique([tituloId, etapa, canal, tentativa]) // idempotência do tick
+  @@index([escritorioId, dataProgramada, estado])
+  @@index([carteiraId, dataProgramada])
+}
+
+model Mensagem {
+  id           String     @id @default(cuid())
+  escritorioId String
+  escritorio   Escritorio @relation(fields: [escritorioId], references: [id])
+  devedorId    String
+  devedor      Devedor    @relation(fields: [devedorId], references: [id])
+  tituloId     String?
+  acaoId       String?
+  excecaoId    String?
+  canal        String
+  de           String // IA | analista | devedor | sistema
+  texto        String
+  entrega      String? // simulada | enviada | falhou
+  marcaAtiva   String // §7: toda mensagem registra em nome de quem saiu
+  em           DateTime   @default(now())
+
+  @@index([escritorioId, devedorId, em])
+  @@index([excecaoId])
+}
+
+model Excecao {
+  id                     String     @id @default(cuid())
+  escritorioId           String
+  escritorio             Escritorio @relation(fields: [escritorioId], references: [id])
+  devedorId              String
+  devedor                Devedor    @relation(fields: [devedorId], references: [id])
+  tituloId               String?
+  titulo                 Titulo?    @relation(fields: [tituloId], references: [id])
+  motivo                 String
+  estado                 String     @default("aberta") // aberta | em atendimento | resolvida | devolvida ao escritório
+  slaMin                 Int? // null = equipe do escritório
+  valorEnvolvidoCentavos Int        @default(0)
+  abertaEm               DateTime   @default(now())
+  assumidaPor            String?
+  assumidaEm             DateTime?
+  causa                  String?
+  resolucao              String?
+
+  @@index([escritorioId, estado])
+}
+
+model Acordo {
+  id                  String     @id @default(cuid())
+  escritorioId        String
+  escritorio          Escritorio @relation(fields: [escritorioId], references: [id])
+  devedorId           String
+  devedor             Devedor    @relation(fields: [devedorId], references: [id])
+  valorTotalCentavos  Int // custo total mostrado ANTES do aceite (Lei 14.181)
+  jurosEmbutidosCentavos Int     @default(0)
+  parcelas            Int
+  parcelasPagas       Int        @default(0)
+  status              String     @default("em dia") // em dia | atrasado | quitado
+  origem              String // portal | analista
+  custoTotalAceitoEm  DateTime? // registro de que o devedor viu o custo total
+  criadoEm            DateTime   @default(now())
+  titulos             AcordoTitulo[]
+
+  @@index([escritorioId, status])
+}
+
+model AcordoTitulo {
+  acordoId String
+  acordo   Acordo @relation(fields: [acordoId], references: [id])
+  tituloId String @unique
+  titulo   Titulo @relation(fields: [tituloId], references: [id])
+
+  @@id([acordoId, tituloId])
+}
+
+// Documento jurídico (§7): comunicação prévia, notificação, autorização,
+// dossiê — com quem assinou e prova de envio.
+model DocumentoJuridico {
+  id           String     @id @default(cuid())
+  escritorioId String
+  escritorio   Escritorio @relation(fields: [escritorioId], references: [id])
+  devedorId    String
+  devedor      Devedor    @relation(fields: [devedorId], references: [id])
+  tipo         String // comunicação prévia | notificação extrajudicial | autorização | dossiê judicial
+  subtipo      String? // protesto | negativação (para autorização)
+  status       String     @default("pronto") // a assinar | aguarda autorização | assinado | enviado com prova | pronto | autorizado
+  valorCentavos Int       @default(0)
+  modelo       String? // modelo do escritório usado
+  assinadoPor  String? // usuário advogado (nome — OAB)
+  assinadoEm   DateTime?
+  provaEnvio   String?
+  conteudo     Json? // dossiê: JSON exportável
+  marcaAtiva   String
+  geradoEm     DateTime   @default(now())
+
+  titulos DocumentoTitulo[]
+
+  @@index([escritorioId, status])
+  @@index([devedorId])
+}
+
+model DocumentoTitulo {
+  documentoId String
+  documento   DocumentoJuridico @relation(fields: [documentoId], references: [id])
+  tituloId    String
+  titulo      Titulo            @relation(fields: [tituloId], references: [id])
+
+  @@id([documentoId, tituloId])
+  @@index([tituloId])
+}
+
+model Promessa {
+  id           String     @id @default(cuid())
+  escritorioId String
+  escritorio   Escritorio @relation(fields: [escritorioId], references: [id])
+  devedorId    String
+  devedor      Devedor    @relation(fields: [devedorId], references: [id])
+  tituloId     String
+  titulo       Titulo     @relation(fields: [tituloId], references: [id])
+  para         DateTime   @db.Date
+  cumprida     Boolean? // null = ainda no futuro
+  origem       String // ligação | portal
+  criadaEm     DateTime   @default(now())
+
+  @@index([escritorioId, para])
+}
+
+model PagamentoInformado {
+  id           String     @id @default(cuid())
+  escritorioId String
+  escritorio   Escritorio @relation(fields: [escritorioId], references: [id])
+  devedorId    String
+  devedor      Devedor    @relation(fields: [devedorId], references: [id])
+  tituloId     String
+  titulo       Titulo     @relation(fields: [tituloId], references: [id])
+  observacao   String?
+  conferido    Boolean    @default(false)
+  informadoEm  DateTime   @default(now())
+}
+
+// Trilha de auditoria (§7/§8): toda mudança de estado, com autor e em nome
+// de qual escritório.
+model RegistroAuditoria {
+  id           String     @id @default(cuid())
+  escritorioId String
+  escritorio   Escritorio @relation(fields: [escritorioId], references: [id])
+  entidade     String // titulo | acao | excecao | acordo | documento | devedor | promessa
+  entidadeId   String
+  de           String?
+  para         String
+  autor        String // IA | analista | escritório | credor | devedor | sistema
+  detalhe      String?
+  em           DateTime   @default(now())
+
+  @@index([escritorioId, em])
+  @@index([entidade, entidadeId])
+}

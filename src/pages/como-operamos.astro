@@ -1,0 +1,103 @@
+---
+import Base from '../layouts/Base.astro';
+import FluxoExcecao from '../components/FluxoExcecao.astro';
+import TabelaSla from '../components/TabelaSla.astro';
+---
+<Base
+  titulo="Como operamos — Sentinella"
+  descricao="O quadro operacional da Sentinella: construção em 2 a 6 semanas, operação humana das 8h às 22h e evolução contínua, com SLA por escrito."
+>
+  <section class="section">
+    <div class="container">
+      <h1>Como operamos</h1>
+      <p class="section-intro">
+        Três etapas, sempre nesta ordem. A primeira entrega o agente funcionando.
+        As outras duas não terminam.
+      </p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <h2>Etapa 1 — Construir</h2>
+      <p class="section-intro">2 a 6 semanas</p>
+      <ul class="lista">
+        <li>Diagnóstico: mapeamos os fluxos de conversa atuais, os sistemas envolvidos (CRM, WhatsApp, ERP, agenda) e as regras de negócio.</li>
+        <li>Desenho: definimos o que o agente pode fazer sozinho, o que precisa de humano, e o tom de voz da marca.</li>
+        <li>Construção sobre o núcleo padronizado da Sentinella: mesma plataforma de monitoramento, mesmos processos de intervenção, personalização no tom, nas integrações e nas regras.</li>
+        <li>Homologação com conversas reais em ambiente de teste, com o cliente aprovando os casos críticos.</li>
+        <li>Entrada em produção gradual (por exemplo, 10% do volume na primeira semana).</li>
+      </ul>
+      <p class="nota">
+        Entregáveis: agente em produção, painel de monitoramento, documento de regras de
+        operação, treinamento da equipe do cliente para receber transferências.
+      </p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <h2>Etapa 2 — Operar</h2>
+      <p class="section-intro">mensal, contínuo</p>
+      <p class="section-intro">
+        Central de operação humana das 8h às 22h. Os analistas não ficam olhando tela:
+        o sistema de monitoramento classifica cada conversa e decisão em tempo real e o
+        humano atua só nas exceções.
+      </p>
+
+      <h3 class="sub-bloco">Gatilhos que transferem a conversa para um analista</h3>
+      <ul class="lista">
+        <li>Cliente pede para falar com humano.</li>
+        <li>Sinais de irritação ou frustração.</li>
+        <li>Tema sensível: cancelamento, reclamação formal, dados pessoais, saúde, questão jurídica, ameaça.</li>
+        <li>Agente sem resposta confiável (baixa confiança) ou repetindo a mesma resposta.</li>
+        <li>Ação com valor financeiro ou efeito irreversível acima do limite definido com o cliente.</li>
+        <li>Resposta que viola a política escrita do cliente.</li>
+      </ul>
+
+      <h3 class="sub-bloco">O caminho de uma exceção</h3>
+      <FluxoExcecao />
+      <p class="section-intro">
+        O que o analista faz ao receber uma exceção: assume a conversa em até 5 minutos,
+        resolve ou transfere para o time do cliente, registra o incidente com causa, e —
+        quando o caso revela uma falha de regra ou prompt — corrige e documenta a mudança.
+      </p>
+      <p class="section-intro">
+        Fora do horário (22h às 8h): o agente entra em modo conservador. Responde dúvidas
+        simples, não executa ações críticas, agenda retorno e coloca o restante numa fila
+        que o primeiro turno revisa às 8h.
+      </p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <h2>Etapa 3 — Evoluir</h2>
+      <p class="section-intro">contínuo</p>
+      <ul class="lista">
+        <li>Revisão quinzenal com o cliente: o que mudou, o que falhou, o que ajustamos.</li>
+        <li>Relatório mensal com volume, taxa de resolução pela IA, exceções por mil conversas, tempo médio de intervenção, incidentes e o Score Sentinella — índice de 0 a 100 da saúde da operação, calculado a partir dessas métricas e da conformidade com a política do cliente.</li>
+        <li>Ajustes de prompt, regras e integrações incluídos na mensalidade.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <h2>Compromissos de serviço</h2>
+      <TabelaSla />
+      <p class="nota">
+        Responsabilidade contratual: correção de defeitos sem custo dentro do SLA e
+        ressarcimento de prejuízo direto comprovado até um teto definido em contrato
+        (<span class="sob-consulta">valor em definição com assessoria jurídica</span>).
+      </p>
+      <p class="section-intro">
+        <a href="/#contato">Agendar diagnóstico</a>
+      </p>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .sub-bloco { margin-top: 2.6rem; }
+</style>

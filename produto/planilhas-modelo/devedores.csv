@@ -1,0 +1,4 @@
+﻿tipo;documento;nome;cidade;whatsapp;email;telefone;telefone_trabalho;telefone_trabalho_indicado_pelo_devedor;contato_terceiro_nome;contato_terceiro_telefone;nao_cobrar
+PF;000.000.001-17;Ana Almeida Duarte;Curitiba;(00) 91234-5678;ana.exemplo@exemplo.invalid;(00) 3123-4567;;não;;;não
+PJ;00.000.002/0001-24;Bazar Modelo ME;Londrina;(00) 92345-6789;financeiro@bazar-modelo.exemplo.invalid;;;não;;;não
+PF;000.000.003-31;Carla Cardoso Lima;Maringá;;carla.exemplo@exemplo.invalid;(00) 3345-6789;(00) 3999-0000;sim;;;não

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="24 0 152 200">
+  <style>
+    .escudo { fill: #0E4A45; }
+    .olho { fill: #F4F6F5; }
+    @media (prefers-color-scheme: dark) {
+      .escudo { fill: #F4F6F5; }
+      .olho { fill: #14211F; }
+    }
+  </style>
+  <path class="escudo" d="M46 10H154Q166 10 166 22V98Q166 144 100 190Q34 144 34 98V22Q34 10 46 10Z"/>
+  <path class="olho" d="M61 92Q100 59 139 92Q100 125 61 92Z"/>
+  <circle class="escudo" cx="100" cy="92" r="14"/>
+</svg>

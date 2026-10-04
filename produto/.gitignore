@@ -1,0 +1,11 @@
+node_modules/
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+apps/painel/public/dados/
+apps/portal/public/dados/
+dados-exemplo/
+.env
+pub/
+apps/servidor/dados/
